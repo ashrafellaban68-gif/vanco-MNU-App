@@ -15,14 +15,18 @@ def set_page_bg_from_local(bin_file):
             background-size: cover;
             background-attachment: fixed;
         }}
-        /* المربع الأبيض الأنيق */
-        .custom-box {{
+        /* ستايل الجدول اللي هيعمل دور المربع */
+        .main-table {{
+            width: 100%;
             background-color: rgba(255, 255, 255, 0.98);
-            padding: 25px;
+            border-collapse: collapse;
             border-radius: 20px;
-            border-top: 10px solid #1e3a8a;
+            overflow: hidden;
             box-shadow: 0 12px 30px rgba(0,0,0,0.2);
-            margin-bottom: 20px;
+            border-top: 10px solid #1e3a8a;
+        }}
+        .main-cell {{
+            padding: 25px;
         }}
         .custom-title {{ 
             color: #1e3a8a; 
@@ -31,7 +35,6 @@ def set_page_bg_from_local(bin_file):
             border-bottom: 2px solid #f0f2f6; 
             padding-bottom: 10px; 
             margin-bottom: 20px;
-            display: block;
         }}
         h1 {{ color: #1e3a8a; text-align: center; font-weight: bold; font-size: 24px; }}
         h4 {{ color: #b8860b; text-align: center; margin-top: -10px; font-size: 14px; }}
@@ -41,7 +44,7 @@ def set_page_bg_from_local(bin_file):
     except:
         st.markdown("<style>.stApp {background-color: #f0f2f6;}</style>", unsafe_allow_html=True)
 
-# --- 2. الإعدادات واللوجوهات ---
+# --- 2. الإعدادات ---
 st.set_page_config(page_title="MNU Clinical PK Tool", layout="centered")
 if os.path.exists("bg.jpg"):
     set_page_bg_from_local('bg.jpg')
@@ -55,18 +58,17 @@ with col_r:
 st.markdown("<h1>Clinical PK Dose Calculator</h1>", unsafe_allow_html=True)
 st.markdown("<h4>Faculty of Pharmacy - Mansoura National University</h4>", unsafe_allow_html=True)
 
-# --- 3. المربع الأبيض (فتح المربع ووضع العنوان فوراً) ---
-st.markdown('<div class="custom-box">', unsafe_allow_html=True)
-st.markdown('<div class="custom-title">📋 Patient Clinical Profile</div>', unsafe_allow_html=True)
+# --- 3. المربع (باستخدام الجدول لضمان بقاء العنوان بالداخل) ---
+# فتح الجدول والخلية والعنوان في سطر واحد
+st.markdown('<table class="main-table"><tr><td class="main-cell"><div class="custom-title">📋 Patient Clinical Profile</div>', unsafe_allow_html=True)
 
-# مدخلات بايثون (دلوقتي بقت جوه الـ div إجبارياً)
+# مدخلات بايثون
 selected_drug = st.selectbox("💊 Selected Drug Category", [
     "Vancomycin (Antibiotics - Renal Adjusted)", 
     "Gentamicin (Antibiotics - Renal Adjusted)", 
     "Digoxin (Cardiovascular - Renal Adjusted)",
     "General Renal Dose Adjustment"
 ])
-
 calc_type = st.radio("Type of Calculation", ["Initial Regimen", "Dose Adjustment"], horizontal=True)
 diagnosis = st.text_input("Diagnosis / Clinical Condition")
 
@@ -121,7 +123,5 @@ if st.button("Generate Final Recommendation"):
     else:
         st.info(f"**Adjustment:** Maintain {target}% of normal dose.")
 
-# --- قفل المربع الأبيض في نهاية الكود ---
-st.markdown('</div>', unsafe_allow_html=True)
-
-st.markdown("<br><p style='text-align: center; color: gray; font-size: 0.75em;'>Clinical PK Project | MNU</p>", unsafe_allow_html=True)
+# قفل الخلية والجدول في آخر سطر
+st.markdown('</td></tr></table>', unsafe_allow_html=True)

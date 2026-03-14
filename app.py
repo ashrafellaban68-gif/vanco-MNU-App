@@ -2,8 +2,8 @@ import streamlit as st
 import os
 import base64
 
-# --- 1. وظيفة الخلفية والستايل الاحترافي ---
-def set_page_bg_from_local(bin_file):
+# --- 1. وظيفة الخلفية والستايل ---
+def set_page_style(bin_file):
     try:
         with open(bin_file, 'rb') as f:
             bin_str = base64.b64encode(f.read()).decode()
@@ -19,31 +19,35 @@ def set_page_bg_from_local(bin_file):
         background-attachment: fixed;
     }}
     
-    /* إلغاء الحواف البيضاء الزائدة وتوسيع المربع */
+    /* المربع الأبيض: رجعناه "صندوق" بس بمسافات خارجية ذكية */
     .block-container {{
         background-color: rgba(255, 255, 255, 0.98);
-        padding: 15px 20px !important; /* تقليل المسافات الداخلية */
-        border-radius: 20px;
+        padding: 25px 30px !important;
+        border-radius: 25px;
         border-top: 10px solid #1e3a8a;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-        margin-top: 30px !important;
-        max-width: 850px !important; /* زيادة عرض المربع */
+        box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        
+        /* تقليل الهامش العلوي والسفلي عشان ما يبقاش ضايع في الشاشة */
+        margin-top: 20px !important;
+        margin-bottom: 20px !important;
+        
+        /* العرض المتوازن: لا هو مالي الشاشة ولا هو ضيق */
+        max-width: 650px !important; 
     }}
     
     .custom-title {{ 
         color: white; 
-        font-size: 19px; 
+        font-size: 20px; 
         font-weight: bold; 
         background: linear-gradient(90deg, #1e3a8a, #3b82f6);
-        padding: 10px 15px;
-        border-radius: 10px;
+        padding: 12px;
+        border-radius: 12px;
         margin-bottom: 20px;
         text-align: center;
-        white-space: nowrap;
     }}
     
     h1 {{ color: #1e3a8a; text-align: center; font-weight: 800; font-size: 24px; margin-bottom: 5px; }}
-    h4 {{ color: #b8860b; text-align: center; font-size: 14px; margin-bottom: 20px; }}
+    h4 {{ color: #b8860b; text-align: center; font-size: 14px; margin-bottom: 15px; }}
     
     .stButton>button {{ 
         background: linear-gradient(45deg, #1e3a8a, #1e40af);
@@ -58,7 +62,7 @@ def set_page_bg_from_local(bin_file):
 
 # --- 2. الإعدادات واللوجوهات ---
 st.set_page_config(page_title="MNU PK Tool", layout="centered")
-set_page_bg_from_local('bg.jpg' if os.path.exists("bg.jpg") else "")
+set_page_style('bg.jpg' if os.path.exists("bg.jpg") else "")
 
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_l:
@@ -67,9 +71,9 @@ with col_r:
     if os.path.exists("uni_logo.png"): st.image("uni_logo.png", width=80)
 
 st.markdown("<h1>Clinical PK Dose Calculator</h1>", unsafe_allow_html=True)
-st.markdown("<h4>Faculty of Pharmacy - Mansoura National University</h4>", unsafe_allow_html=True)
+st.markdown("<h4>Faculty of Pharmacy - MNU</h4>", unsafe_allow_html=True)
 
-# --- 3. المحتوى المباشر (بدون جداول معقدة لتقليل الحواف) ---
+# --- 3. المحتوى ---
 st.markdown('<div class="custom-title">📋 Patient Clinical Profile</div>', unsafe_allow_html=True)
 
 selected_drug = st.selectbox("💊 Selected Drug Category", [
@@ -127,7 +131,7 @@ if st.button("Generate Final Recommendation"):
     
     if k > 0:
         md = (target * k * vd * interval) / (1 - (2.71828 ** (-k * interval)))
-        st.success(f"**Recommendation:** {round(ld_val/step)*step} {unit} LD, then {round(md/step)*step} {unit} Q{interval}H.")
+        st.success(f"**Recommendation:** {round(ld_val/step)*step} {unit} LD, then {round(md/step)*step} {unit} every {interval}h.")
     else:
         st.info(f"**Adjustment:** Maintain {target}% of normal dose.")
 

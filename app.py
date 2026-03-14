@@ -40,9 +40,7 @@ def set_page_bg_from_local(bin_file):
 st.set_page_config(page_title="Clinical PK Calculator", layout="centered")
 if os.path.exists("bg.jpg"): set_page_bg_from_local('bg.jpg')
 
-# تصليح سطر الأعمدة اللي كان عامل Error
 col_l, col_m, col_r = st.columns([1, 2, 1])
-
 with col_l:
     if os.path.exists("college_logo.png"): st.image("college_logo.png", width=110)
 with col_r:
@@ -51,13 +49,12 @@ with col_r:
 st.markdown("<h1>Clinical PK Dose Calculator</h1>", unsafe_allow_html=True)
 st.markdown("<h4>Faculty of Pharmacy - Mansoura National University</h4>", unsafe_allow_html=True)
 
-# --- 3. المربع الرئيسي والعناوين مدمجين لضمان الدخول في المربع ---
+# --- 3. المربع الرئيسي والعناوين ---
 st.markdown('''
 <div class="main-container">
     <div class="custom-title">📋 Patient Clinical Profile</div>
 ''', unsafe_allow_html=True)
 
-# اختيار الدواء داخل المربع
 selected_drug = st.selectbox("💊 Select Medication", ["Vancomycin", "Gentamicin", "Digoxin"])
 
 c1, c2 = st.columns(2)
@@ -90,7 +87,7 @@ if selected_drug == "Vancomycin":
     k, vd, ld_val = (0.00083 * crcl + 0.0044), (0.7 * weight), (25 * weight)
 elif selected_drug == "Gentamicin":
     k, vd, ld_val = (0.00293 * crcl + 0.014), (0.25 * weight), (2 * weight)
-else:
+else: # Digoxin
     k, vd, ld_val = ((0.0138 * crcl + 0.02) / 24), (7 * weight + (3 * crcl)), (10 * weight)
 
 md = (target * k * vd * interval) / (1 - (2.71828 ** (-k * interval)))
@@ -102,4 +99,23 @@ if st.button("Generate Recommendation"):
     m1.metric("CrCl", f"{crcl:.1f}")
     m2.metric("Half-life", f"{0.693/k:.1f}h")
     m3.metric("Interval", f"{interval}h")
-                                                    
+    
+    f_ld = round(ld_val/step)*step
+    f_md = round(md/step)*step
+    st.success(f"**Recommendation:** {f_ld} {unit} LD, then {f_md} {unit} every {interval}h")
+    
+    # --- الجزء اللي كان ناقص (Safety & Monitoring) ---
+    with st.expander("🛡️ Safety & Monitoring Plan"):
+        if selected_drug == "Vancomycin":
+            st.write("**TDM:** Check trough level before the 4th dose (Steady State).")
+            st.write("**Renal:** Monitor Serum Creatinine daily for Nephrotoxicity.")
+        elif selected_drug == "Gentamicin":
+            st.write("**TDM:** Monitor Peak (efficacy) and Trough (safety).")
+            st.write("**Toxicity:** Watch for Ototoxicity (Hearing) and Nephrotoxicity.")
+        else: # Digoxin
+            st.write("**TDM:** Level should be measured 6-8 hours post-dose.")
+            st.write("**Safety:** Monitor Potassium levels (Hypokalemia increases toxicity risk).")
+
+# قفل المربع
+st.markdown('</div>', unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray; font-size: 0.8em;'>Clinical PK Project | MNU</p>", unsafe_allow_html=True)

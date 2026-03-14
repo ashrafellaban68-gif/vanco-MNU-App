@@ -15,14 +15,22 @@ def set_page_bg_from_local(bin_file):
             background-size: cover;
             background-attachment: fixed;
         }}
-        h1 {{ color: #1e3a8a; text-align: center; font-weight: bold; font-size: 26px; }}
-        h4 {{ color: #b8860b; text-align: center; margin-top: -10px; font-size: 16px; margin-bottom: 20px; }}
-        /* تلوين حواف المربع الداخلي */
-        [data-testid="stVerticalBlockBorderWrapper"] {{
-            background-color: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 10px;
+        /* الستايل القوي للمربع الأبيض */
+        .final-box {{
+            background-color: rgba(255, 255, 255, 0.98);
+            padding: 30px;
+            border-radius: 20px;
+            border-top: 10px solid #1e3a8a;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+            border-left: 1px solid #ddd;
+            border-right: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
         }}
+        .custom-title {{ color: #1e3a8a; font-size: 24px; font-weight: bold; border-bottom: 2px solid #f0f2f6; padding-bottom: 10px; margin-bottom: 20px; }}
+        h1 {{ color: #1e3a8a; text-align: center; font-weight: bold; }}
+        h4 {{ color: #b8860b; text-align: center; margin-top: -10px; }}
+        .stButton>button {{ background-color: #1e3a8a; color: white; font-weight: bold; border-radius: 12px; width: 100%; height: 3.5em; }}
         </style>
         ''', unsafe_allow_html=True)
     except:
@@ -35,79 +43,80 @@ if os.path.exists("bg.jpg"):
 
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_l:
-    if os.path.exists("college_logo.png"): st.image("college_logo.png", width=90)
+    if os.path.exists("college_logo.png"): st.image("college_logo.png", width=95)
 with col_r:
-    if os.path.exists("uni_logo.png"): st.image("uni_logo.png", width=90)
+    if os.path.exists("uni_logo.png"): st.image("uni_logo.png", width=95)
 
 st.markdown("<h1>Clinical PK Dose Calculator</h1>", unsafe_allow_html=True)
 st.markdown("<h4>Faculty of Pharmacy - Mansoura National University</h4>", unsafe_allow_html=True)
 
-# --- 3. المربع الرئيسي باستخدام خاصية border الأصلية ---
-# دي بتعمل مربع أبيض إجباري وبيدخله كل الكلام
-with st.container(border=True):
-    st.subheader("📋 Patient Clinical Profile")
-    
-    selected_drug = st.selectbox("💊 Selected Drug Category", [
-        "Vancomycin (Antibiotics - Renal Adjusted)", 
-        "Gentamicin (Antibiotics - Renal Adjusted)", 
-        "Digoxin (Cardiovascular - Renal Adjusted)",
-        "General Renal Dose Adjustment"
-    ])
-    
-    calc_type = st.radio("Type of Calculation", ["Initial Regimen", "Dose Adjustment"], horizontal=True)
-    diagnosis = st.text_input("Diagnosis / Clinical Condition")
-    
-    st.divider()
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        age = st.number_input("Age (Years)", min_value=1, value=60)
-        weight = st.number_input("Weight (kg)", min_value=10.0, value=80.0)
-        height = st.number_input("Height (cm)", min_value=50, value=170)
-        gender = st.selectbox("Gender", ["Male", "Female"])
-    with c2:
-        scr = st.number_input("Serum Creatinine (mg/dL)", min_value=0.1, value=1.20)
-        
-        if "Vancomycin" in selected_drug:
-            target = st.slider("Target Trough (mg/L)", 10.0, 20.0, 15.0)
-            intervals = [8, 12, 24, 48]
-        elif "Gentamicin" in selected_drug:
-            target = st.slider("Target Trough (mg/L)", 0.5, 2.0, 1.0)
-            intervals = [8, 12, 24]
-        elif "Digoxin" in selected_drug:
-            target = st.slider("Target CSS (ng/mL)", 0.5, 2.0, 0.8)
-            intervals = [24, 48]
-        else:
-            target = st.slider("Target Dose %", 25, 100, 100)
-            intervals = [12, 24, 48]
-        interval = st.selectbox("Dosing Interval (Hours)", intervals)
+# --- 3. بناء المربع (الحل الأخير للكلمة الهاربة) ---
+# فتح المربع ووضع العنوان في أمر واحد
+st.markdown('<div class="final-box"><div class="custom-title">📋 Patient Clinical Profile</div>', unsafe_allow_html=True)
 
-    # الحسابات
-    if gender == "Male": crcl = ((140 - age) * weight) / (72 * scr)
-    else: crcl = (((140 - age) * weight) / (72 * scr)) * 0.85
+# مدخلات بايثون
+selected_drug = st.selectbox("💊 Selected Drug Category", [
+    "Vancomycin (Antibiotics - Renal Adjusted)", 
+    "Gentamicin (Antibiotics - Renal Adjusted)", 
+    "Digoxin (Cardiovascular - Renal Adjusted)",
+    "General Renal Dose Adjustment"
+])
+calc_type = st.radio("Type of Calculation", ["Initial Regimen", "Dose Adjustment"], horizontal=True)
+diagnosis = st.text_input("Diagnosis / Clinical Condition")
+
+st.markdown("<hr>", unsafe_allow_html=True)
+
+c1, c2 = st.columns(2)
+with c1:
+    age = st.number_input("Age (Years)", min_value=1, value=60)
+    weight = st.number_input("Weight (kg)", min_value=10.0, value=80.0)
+    height = st.number_input("Height (cm)", min_value=50, value=170)
+    gender = st.selectbox("Gender", ["Male", "Female"])
+with c2:
+    scr = st.number_input("Serum Creatinine (mg/dL)", min_value=0.1, value=1.20)
+    if "Vancomycin" in selected_drug:
+        target = st.slider("Target Trough (mg/L)", 10.0, 20.0, 15.0)
+        intervals = [8, 12, 24, 48]
+    elif "Gentamicin" in selected_drug:
+        target = st.slider("Target Trough (mg/L)", 0.5, 2.0, 1.0)
+        intervals = [8, 12, 24]
+    elif "Digoxin" in selected_drug:
+        target = st.slider("Target CSS (ng/mL)", 0.5, 2.0, 0.8)
+        intervals = [24, 48]
+    else:
+        target = st.slider("Target Dose %", 25, 100, 100)
+        intervals = [12, 24, 48]
+    interval = st.selectbox("Dosing Interval (Hours)", intervals)
+
+# الحسابات
+if gender == "Male": crcl = ((140 - age) * weight) / (72 * scr)
+else: crcl = (((140 - age) * weight) / (72 * scr)) * 0.85
+
+if gender == "Male": ibw = 50 + 2.3 * ((height/2.54) - 60)
+else: ibw = 45.5 + 2.3 * ((height/2.54) - 60)
+
+# معادلات الأدوية
+unit, step = ("mg", 250) if "Vancomycin" in selected_drug else ("mg", 20) if "Gentamicin" in selected_drug else ("mcg", 62.5) if "Digoxin" in selected_drug else ("%", 5)
+if "Vancomycin" in selected_drug: k, vd, ld_val = (0.00083 * crcl + 0.0044), (0.7 * weight), (25 * weight)
+elif "Gentamicin" in selected_drug: k, vd, ld_val = (0.00293 * crcl + 0.014), (0.25 * weight), (2 * weight)
+elif "Digoxin" in selected_drug: k, vd, ld_val = ((0.0138 * crcl + 0.02) / 24), (7 * weight + (3 * crcl)), (10 * weight)
+else: k, vd, ld_val = 0, 0, 0
+
+if st.button("Generate Final Recommendation"):
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown('<div class="custom-title">📊 Results</div>', unsafe_allow_html=True)
+    m1, m2, m3 = st.columns(3)
+    m1.metric("CrCl", f"{crcl:.1f}")
+    m2.metric("IBW", f"{ibw:.1f}")
+    m3.metric("t½", f"{0.693/k:.1f}h" if k > 0 else "N/A")
     
-    if gender == "Male": ibw = 50 + 2.3 * ((height/2.54) - 60)
-    else: ibw = 45.5 + 2.3 * ((height/2.54) - 60)
+    if k > 0:
+        md = (target * k * vd * interval) / (1 - (2.71828 ** (-k * interval)))
+        st.success(f"**Recommendation:** {round(ld_val/step)*step} {unit} LD, then {round(md/step)*step} {unit} Q{interval}H.")
+    else:
+        st.info(f"**Adjustment:** Maintain {target}% of normal dose.")
 
-    # معادلات الأدوية
-    unit, step = ("mg", 250) if "Vancomycin" in selected_drug else ("mg", 20) if "Gentamicin" in selected_drug else ("mcg", 62.5) if "Digoxin" in selected_drug else ("%", 5)
-    if "Vancomycin" in selected_drug: k, vd, ld_val = (0.00083 * crcl + 0.0044), (0.7 * weight), (25 * weight)
-    elif "Gentamicin" in selected_drug: k, vd, ld_val = (0.00293 * crcl + 0.014), (0.25 * weight), (2 * weight)
-    elif "Digoxin" in selected_drug: k, vd, ld_val = ((0.0138 * crcl + 0.02) / 24), (7 * weight + (3 * crcl)), (10 * weight)
-    else: k, vd, ld_val = 0, 0, 0
-
-    if st.button("Generate Final Recommendation", use_container_width=True):
-        st.divider()
-        st.markdown("### 📊 Results")
-        m1, m2, m3 = st.columns(3)
-        m1.metric("CrCl", f"{crcl:.1f}")
-        m2.metric("IBW", f"{ibw:.1f}")
-        m3.metric("t½", f"{0.693/k:.1f}h" if k > 0 else "N/A")
-        
-        if k > 0:
-            md = (target * k * vd * interval) / (1 - (2.71828 ** (-k * interval)))
-            st.success(f"**Recommendation:** {round(ld_val/step)*step} {unit} LD, then {round(md/step)*step} {unit} Q{interval}H.")
-        else:
-            st.info(f"**Adjustment:** Maintain {target}% of normal dose.")
+# قفل المربع (الآن كل شيء بالداخل)
+st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("<br><p style='text-align: center; color: gray; font-size: 0.8em;'>Clinical PK Project | MNU</p>", unsafe_allow_html=True)

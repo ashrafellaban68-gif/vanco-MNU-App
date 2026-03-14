@@ -36,7 +36,7 @@ def set_page_bg_from_local(bin_file):
     except Exception:
         st.markdown("<style>.stApp {background-color: #f0f2f6;}</style>", unsafe_allow_html=True)
 
-# --- 2. إعداد الصفحة ---
+# --- 2. إعداد الصفحة واللوجوهات ---
 st.set_page_config(page_title="Clinical PK Calculator", layout="centered")
 if os.path.exists("bg.jpg"): set_page_bg_from_local('bg.jpg')
 
@@ -49,10 +49,16 @@ with col_r:
 st.markdown("<h1>Clinical PK Dose Calculator</h1>", unsafe_allow_html=True)
 st.markdown("<h4>Faculty of Pharmacy - Mansoura National University</h4>", unsafe_allow_html=True)
 
-# --- 3. المربع الرئيسي واختيار الدواء ---
+# --- 3. بداية المربع الأبيض ---
 st.markdown('<div class="main-container">', unsafe_allow_html=True)
-selected_drug = st.selectbox("💊 Select Medication", ["Vancomycin", "Gentamicin", "Digoxin"])
+
+# العنوان رجع أول حاجة جوه المربع
 st.markdown('<div class="custom-title">📋 Patient Clinical Profile</div>', unsafe_allow_html=True)
+
+# اختيار الدواء بقى تحت العنوان مباشرة
+selected_drug = st.selectbox("💊 Select Medication to Calculate", ["Vancomycin", "Gentamicin", "Digoxin"])
+
+st.markdown("<br>", unsafe_allow_html=True) # مسافة بسيطة للتنسيق
 
 c1, c2 = st.columns(2)
 with c1:
@@ -62,6 +68,7 @@ with c1:
 with c2:
     scr = st.number_input("SCr (mg/dL)", min_value=0.1, value=1.40, format="%.2f")
     
+    # تحديد أهداف التركيز لكل دواء
     if selected_drug == "Vancomycin":
         target = st.slider("Target Trough (mg/L)", 10, 20, 15)
         intervals = [8, 12, 24, 48]
@@ -75,11 +82,11 @@ with c2:
     interval = st.selectbox("Dosing Interval (Hours)", intervals)
 
 # --- الحسابات العلمية ---
-# 1. CrCl
+# 1. CrCl (Cockcroft-Gault)
 if gender == "Male": crcl = ((140 - age) * weight) / (72 * scr)
 else: crcl = (((140 - age) * weight) / (72 * scr)) * 0.85
 
-# 2. معادلات الأدوية
+# 2. Drug Parameters Logic
 unit = "mg"
 if selected_drug == "Vancomycin":
     k = 0.00083 * crcl + 0.0044
@@ -92,14 +99,15 @@ elif selected_drug == "Gentamicin":
     ld_val = 2 * weight
     step = 20
 else: # Digoxin
-    k = (0.0138 * crcl + 0.02) / 24 # k per hour
-    vd = 7 * weight + (3 * crcl) # Digoxin Vd equation
+    k = (0.0138 * crcl + 0.02) / 24 
+    vd = 7 * weight + (3 * crcl) 
     ld_val = 10 * weight # in mcg
     unit = "mcg"
-    step = 62.5 # Digoxin tablet strength
+    step = 62.5 
 
 md = (target * k * vd * interval) / (1 - (2.71828 ** (-k * interval)))
 
+# زر الحساب داخل المربع
 if st.button("Generate Recommendation"):
     st.markdown("---")
     st.markdown(f'<div class="custom-title">📊 {selected_drug} PK Results</div>', unsafe_allow_html=True)
@@ -115,9 +123,14 @@ if st.button("Generate Recommendation"):
     
     with st.expander("🛡️ Safety & Monitoring"):
         if selected_drug == "Digoxin":
-            st.write("Watch for Digoxin toxicity (Nausea, Yellow vision). Monitor Potassium levels.")
+            st.write("Watch for toxicity signs (Nausea, Vomiting, Blurred vision). Monitor serum Potassium levels.")
+        elif selected_drug == "Gentamicin":
+            st.write("Monitor Peak for efficacy and Trough for safety. High risk of Ototoxicity.")
         else:
-            st.write(f"Monitor {selected_drug} serum levels and renal function.")
+            st.write("Monitor Trough levels before 4th dose. Target steady state achievement.")
 
+# إغلاق المربع
 st.markdown('</div>', unsafe_allow_html=True)
-st.markdown("<br><p style='text-align: center; color: gray;'>Clinical PK Project | MNU</p>", unsafe_allow_html=True)
+
+# --- 4. Footer ---
+st.markdown("<br><p style='text-align: center; font-size: 0.85em; color: gray;'>Clinical Pharmacokinetics Project | MNU</p>", unsafe_allow_html=True)

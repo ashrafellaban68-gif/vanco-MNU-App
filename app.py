@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import base64
 
-# --- 1. وظيفة الخلفية ---
+# --- 1. وظيفة الخلفية والستايل ---
 def set_page_bg_from_local(bin_file):
     try:
         with open(bin_file, 'rb') as f:
@@ -15,21 +15,28 @@ def set_page_bg_from_local(bin_file):
             background-size: cover;
             background-attachment: fixed;
         }}
-        /* الستايل القوي للمربع الأبيض */
-        .final-box {{
+        .white-box {{
             background-color: rgba(255, 255, 255, 0.98);
-            padding: 30px;
+            padding: 25px;
             border-radius: 20px;
             border-top: 10px solid #1e3a8a;
             box-shadow: 0 12px 30px rgba(0,0,0,0.2);
-            margin-bottom: 20px;
-            border-left: 1px solid #ddd;
-            border-right: 1px solid #ddd;
-            border-bottom: 1px solid #ddd;
+            margin: 10px 0px;
         }}
-        .custom-title {{ color: #1e3a8a; font-size: 24px; font-weight: bold; border-bottom: 2px solid #f0f2f6; padding-bottom: 10px; margin-bottom: 20px; }}
-        h1 {{ color: #1e3a8a; text-align: center; font-weight: bold; }}
-        h4 {{ color: #b8860b; text-align: center; margin-top: -10px; }}
+        /* تعديل العنوان ليكون على سطر واحد */
+        .custom-title {{ 
+            color: #1e3a8a; 
+            font-size: 20px; 
+            font-weight: bold; 
+            border-bottom: 2px solid #f0f2f6; 
+            padding-bottom: 10px; 
+            margin-bottom: 20px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+        h1 {{ color: #1e3a8a; text-align: center; font-weight: bold; font-size: 24px; }}
+        h4 {{ color: #b8860b; text-align: center; margin-top: -10px; font-size: 14px; }}
         .stButton>button {{ background-color: #1e3a8a; color: white; font-weight: bold; border-radius: 12px; width: 100%; height: 3.5em; }}
         </style>
         ''', unsafe_allow_html=True)
@@ -43,28 +50,28 @@ if os.path.exists("bg.jpg"):
 
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_l:
-    if os.path.exists("college_logo.png"): st.image("college_logo.png", width=95)
+    if os.path.exists("college_logo.png"): st.image("college_logo.png", width=85)
 with col_r:
-    if os.path.exists("uni_logo.png"): st.image("uni_logo.png", width=95)
+    if os.path.exists("uni_logo.png"): st.image("uni_logo.png", width=85)
 
 st.markdown("<h1>Clinical PK Dose Calculator</h1>", unsafe_allow_html=True)
 st.markdown("<h4>Faculty of Pharmacy - Mansoura National University</h4>", unsafe_allow_html=True)
 
-# --- 3. بناء المربع (الحل الأخير للكلمة الهاربة) ---
-# فتح المربع ووضع العنوان في أمر واحد
-st.markdown('<div class="final-box"><div class="custom-title">📋 Patient Clinical Profile</div>', unsafe_allow_html=True)
+# --- 3. المربع الأبيض ---
+st.markdown('<div class="white-box">', unsafe_allow_html=True)
+st.markdown('<div class="custom-title">📋 Patient Clinical Profile</div>', unsafe_allow_html=True)
 
-# مدخلات بايثون
 selected_drug = st.selectbox("💊 Selected Drug Category", [
     "Vancomycin (Antibiotics - Renal Adjusted)", 
     "Gentamicin (Antibiotics - Renal Adjusted)", 
     "Digoxin (Cardiovascular - Renal Adjusted)",
     "General Renal Dose Adjustment"
 ])
+
 calc_type = st.radio("Type of Calculation", ["Initial Regimen", "Dose Adjustment"], horizontal=True)
 diagnosis = st.text_input("Diagnosis / Clinical Condition")
 
-st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
 
 c1, c2 = st.columns(2)
 with c1:
@@ -73,7 +80,7 @@ with c1:
     height = st.number_input("Height (cm)", min_value=50, value=170)
     gender = st.selectbox("Gender", ["Male", "Female"])
 with c2:
-    scr = st.number_input("Serum Creatinine (mg/dL)", min_value=0.1, value=1.20)
+    scr = st.number_input("Serum Creatinine (mg/dL)", min_value=0.1, value=1.20, format="%.2f")
     if "Vancomycin" in selected_drug:
         target = st.slider("Target Trough (mg/L)", 10.0, 20.0, 15.0)
         intervals = [8, 12, 24, 48]
@@ -95,7 +102,6 @@ else: crcl = (((140 - age) * weight) / (72 * scr)) * 0.85
 if gender == "Male": ibw = 50 + 2.3 * ((height/2.54) - 60)
 else: ibw = 45.5 + 2.3 * ((height/2.54) - 60)
 
-# معادلات الأدوية
 unit, step = ("mg", 250) if "Vancomycin" in selected_drug else ("mg", 20) if "Gentamicin" in selected_drug else ("mcg", 62.5) if "Digoxin" in selected_drug else ("%", 5)
 if "Vancomycin" in selected_drug: k, vd, ld_val = (0.00083 * crcl + 0.0044), (0.7 * weight), (25 * weight)
 elif "Gentamicin" in selected_drug: k, vd, ld_val = (0.00293 * crcl + 0.014), (0.25 * weight), (2 * weight)
@@ -112,11 +118,9 @@ if st.button("Generate Final Recommendation"):
     
     if k > 0:
         md = (target * k * vd * interval) / (1 - (2.71828 ** (-k * interval)))
-        st.success(f"**Recommendation:** {round(ld_val/step)*step} {unit} LD, then {round(md/step)*step} {unit} Q{interval}H.")
+        st.success(f"**Recommendation:** {round(ld_val/step)*step} {unit} LD, then {round(md/step)*step} {unit} every {interval}h.")
     else:
         st.info(f"**Adjustment:** Maintain {target}% of normal dose.")
 
-# قفل المربع (الآن كل شيء بالداخل)
 st.markdown('</div>', unsafe_allow_html=True)
-
-st.markdown("<br><p style='text-align: center; color: gray; font-size: 0.8em;'>Clinical PK Project | MNU</p>", unsafe_allow_html=True)
+st.markdown("<br><p style='text-align: center; color: gray; font-size: 0.75em;'>Clinical PK Project | MNU</p>", unsafe_allow_html=True)

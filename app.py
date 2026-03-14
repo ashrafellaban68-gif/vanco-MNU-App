@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import base64
 
-# --- 1. وظيفة الخلفية والستايل ---
+# --- 1. وظيفة الخلفية والستايل الجمالي ---
 def set_page_bg_from_local(bin_file):
     try:
         with open(bin_file, 'rb') as f:
@@ -10,45 +10,69 @@ def set_page_bg_from_local(bin_file):
         st.markdown(f'''
         <style>
         .stApp {{
-            background-image: linear-gradient(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.88)), 
+            background-image: linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)), 
             url("data:image/png;base64,{bin_str}");
             background-size: cover;
             background-attachment: fixed;
         }}
-        /* ستايل الجدول اللي هيعمل دور المربع */
-        .main-table {{
+        
+        /* تصميم المربع الجمالي الجديد */
+        .aesthetic-box {{
             width: 100%;
-            background-color: rgba(255, 255, 255, 0.98);
-            border-collapse: collapse;
-            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 25px;
+            border-collapse: separate;
             overflow: hidden;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.2);
-            border-top: 10px solid #1e3a8a;
+            box-shadow: 0 15px 35px rgba(30, 58, 138, 0.15); /* ظل بلون أزرق خفيف */
+            border: 1px solid rgba(30, 58, 138, 0.1);
         }}
+        
         .main-cell {{
-            padding: 25px;
+            padding: 30px;
         }}
+        
+        /* ستايل العنوان داخل المربع */
         .custom-title {{ 
-            color: #1e3a8a; 
+            color: white; 
             font-size: 20px; 
             font-weight: bold; 
-            border-bottom: 2px solid #f0f2f6; 
-            padding-bottom: 10px; 
-            margin-bottom: 20px;
+            background: linear-gradient(90deg, #1e3a8a, #3b82f6); /* تدرج لوني أزرق */
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 10px rgba(30, 58, 138, 0.2);
+            text-align: center;
         }}
-        h1 {{ color: #1e3a8a; text-align: center; font-weight: bold; font-size: 24px; }}
-        h4 {{ color: #b8860b; text-align: center; margin-top: -10px; font-size: 14px; }}
-        .stButton>button {{ background-color: #1e3a8a; color: white; font-weight: bold; border-radius: 12px; width: 100%; }}
+        
+        /* تجميل المدخلات (بايثون) */
+        div[data-baseweb="select"] {{ border-radius: 10px; }}
+        input {{ border-radius: 10px !important; }}
+        
+        h1 {{ color: #1e3a8a; text-align: center; font-weight: 800; font-size: 28px; letter-spacing: -0.5px; }}
+        h4 {{ color: #b8860b; text-align: center; margin-top: -10px; font-size: 15px; font-weight: 500; }}
+        
+        /* زر الحساب بشكل عصري */
+        .stButton>button {{ 
+            background: linear-gradient(45deg, #1e3a8a, #1e40af);
+            color: white; 
+            font-weight: bold; 
+            border-radius: 15px; 
+            border: none;
+            padding: 10px;
+            transition: 0.3s;
+        }}
+        .stButton>button:hover {{ transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }}
         </style>
         ''', unsafe_allow_html=True)
     except:
-        st.markdown("<style>.stApp {background-color: #f0f2f6;}</style>", unsafe_allow_html=True)
+        st.markdown("<style>.stApp {background-color: #f8fafc;}</style>", unsafe_allow_html=True)
 
 # --- 2. الإعدادات ---
-st.set_page_config(page_title="MNU Clinical PK Tool", layout="centered")
+st.set_page_config(page_title="MNU PK Calculator", layout="centered")
 if os.path.exists("bg.jpg"):
     set_page_bg_from_local('bg.jpg')
 
+# اللوجوهات مع تنسيق المسافات
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_l:
     if os.path.exists("college_logo.png"): st.image("college_logo.png", width=85)
@@ -58,11 +82,15 @@ with col_r:
 st.markdown("<h1>Clinical PK Dose Calculator</h1>", unsafe_allow_html=True)
 st.markdown("<h4>Faculty of Pharmacy - Mansoura National University</h4>", unsafe_allow_html=True)
 
-# --- 3. المربع (باستخدام الجدول لضمان بقاء العنوان بالداخل) ---
-# فتح الجدول والخلية والعنوان في سطر واحد
-st.markdown('<table class="main-table"><tr><td class="main-cell"><div class="custom-title">📋 Patient Clinical Profile</div>', unsafe_allow_html=True)
+# --- 3. المربع الجمالي (باستخدام الجدول المطور) ---
+st.markdown('''
+<table class="aesthetic-box">
+    <tr>
+        <td class="main-cell">
+            <div class="custom-title">📋 Patient Clinical Profile</div>
+''', unsafe_allow_html=True)
 
-# مدخلات بايثون
+# مدخلات البرنامج
 selected_drug = st.selectbox("💊 Selected Drug Category", [
     "Vancomycin (Antibiotics - Renal Adjusted)", 
     "Gentamicin (Antibiotics - Renal Adjusted)", 
@@ -72,7 +100,7 @@ selected_drug = st.selectbox("💊 Selected Drug Category", [
 calc_type = st.radio("Type of Calculation", ["Initial Regimen", "Dose Adjustment"], horizontal=True)
 diagnosis = st.text_input("Diagnosis / Clinical Condition")
 
-st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
+st.markdown("<hr style='opacity: 0.1; margin: 20px 0;'>", unsafe_allow_html=True)
 
 c1, c2 = st.columns(2)
 with c1:
@@ -96,10 +124,9 @@ with c2:
         intervals = [12, 24, 48]
     interval = st.selectbox("Dosing Interval (Hours)", intervals)
 
-# الحسابات
+# الحسابات (نفس المعادلات السابقة)
 if gender == "Male": crcl = ((140 - age) * weight) / (72 * scr)
 else: crcl = (((140 - age) * weight) / (72 * scr)) * 0.85
-
 if gender == "Male": ibw = 50 + 2.3 * ((height/2.54) - 60)
 else: ibw = 45.5 + 2.3 * ((height/2.54) - 60)
 
@@ -110,8 +137,7 @@ elif "Digoxin" in selected_drug: k, vd, ld_val = ((0.0138 * crcl + 0.02) / 24), 
 else: k, vd, ld_val = 0, 0, 0
 
 if st.button("Generate Final Recommendation"):
-    st.markdown("<hr>", unsafe_allow_html=True)
-    st.markdown('<div class="custom-title">📊 Results</div>', unsafe_allow_html=True)
+    st.markdown("<br><div class='custom-title' style='background: #10b981;'>📊 Results</div>", unsafe_allow_html=True)
     m1, m2, m3 = st.columns(3)
     m1.metric("CrCl", f"{crcl:.1f}")
     m2.metric("IBW", f"{ibw:.1f}")
@@ -123,5 +149,7 @@ if st.button("Generate Final Recommendation"):
     else:
         st.info(f"**Adjustment:** Maintain {target}% of normal dose.")
 
-# قفل الخلية والجدول في آخر سطر
+# قفل الجدول
 st.markdown('</td></tr></table>', unsafe_allow_html=True)
+
+st.markdown("<br><p style='text-align: center; color: #64748b; font-size: 0.8em; font-weight: 500;'>Clinical PK Project | Mansoura National University</p>", unsafe_allow_html=True)

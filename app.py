@@ -35,16 +35,18 @@ def set_page_bg_from_local(bin_file):
     except:
         st.markdown("<style>.stApp {background-color: #f8fafc;}</style>", unsafe_allow_html=True)
 
-# --- 2. الإعدادات ---
+# --- 2. الإعدادات واللوجوهات (تم التبديل هنا) ---
 st.set_page_config(page_title="AED PK Calculator", layout="centered")
 if os.path.exists("bg.jpg"):
     set_page_bg_from_local('bg.jpg')
 
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_l:
-    if os.path.exists("college_logo.png"): st.image("college_logo.png", width=85)
-with col_r:
+    # لوجو الجامعة على الشمال
     if os.path.exists("uni_logo.png"): st.image("uni_logo.png", width=85)
+with col_r:
+    # لوجو الكلية على اليمين
+    if os.path.exists("college_logo.png"): st.image("college_logo.png", width=85)
 
 st.markdown("<h1>AED Dose Calculator</h1>", unsafe_allow_html=True)
 st.markdown("<h4>Faculty of Pharmacy - Mansoura National University</h4>", unsafe_allow_html=True)
@@ -83,27 +85,24 @@ with c2:
         target = st.slider("Target CSS (mg/L)", 12, 46, 20); interval = st.selectbox("Interval (Hours)", interval_options, index=3)
 
 # --- الحسابات العلمية ---
-# 1. CrCl
 if gender == "Male": crcl = ((140 - age) * weight) / (72 * scr)
 else: crcl = (((140 - age) * weight) / (72 * scr)) * 0.85
 
-# 2. Drug specific calculations
 if selected_drug == "Phenytoin":
     vmax, km = 7 * weight, 4
     md = (vmax * target) / (km + target)
     ld_val, unit, step = 15 * weight, "mg", 50
 elif selected_drug == "Valproic acid":
     cl = 0.008 * weight; vd = 0.15 * weight; k = cl / vd
-    md = (target * cl * interval) / (1 - (2.71828 ** (-k * interval))) # Correction applied
+    md = (target * cl * interval) / (1 - (2.71828 ** (-k * interval)))
     ld_val, unit, step = 20 * weight, "mg", 250
 elif selected_drug == "Carbamazepine":
     cl = 0.06 * weight; vd = 1.4 * weight; k = cl / vd
     md = (target * cl * interval) 
     ld_val, unit, step = 0, "mg", 200
 else: # Levetiracetam
-    cl = (crcl * 0.6) / 1000 * 60 # L/hr
-    vd = 0.6 * weight
-    k = cl / vd
+    cl = (crcl * 0.6) / 1000 * 60 
+    vd = 0.6 * weight; k = cl / vd
     md = (target * cl * interval)
     ld_val, unit, step = 1000, "mg", 500
 
@@ -118,10 +117,10 @@ if st.button("Generate AED Recommendation"):
     st.success(f"**Recommendation:** Give {round(ld_val/50)*50 if ld_val>0 else 'no'} mg LD, then {f_md} {unit} every {interval}h.")
     
     with st.expander("🛡️ AED Monitoring & Safety"):
-        if selected_drug == "Phenytoin": st.write("- **Zero-order kinetics:** Saturation occurs; monitoring is vital.\n- **Note:** Check Albumin level.")
-        elif selected_drug == "Valproic acid": st.write("- **Safety:** Liver Function Tests (LFTs) required.\n- **Warning:** Highly Teratogenic.")
-        elif selected_drug == "Carbamazepine": st.write("- **Auto-induction:** Clearance increases after 2 weeks.\n- **Note:** Check for HLA-B*1502 risk.")
-        else: st.write("- **Excretion:** Primarily Renal. Adjust for low CrCl.\n- **Behavior:** Monitor for psychiatric side effects.")
+        if selected_drug == "Phenytoin": st.write("- **Zero-order kinetics:** Saturation occurs; monitoring is vital.")
+        elif selected_drug == "Valproic acid": st.write("- **Warning:** Highly Teratogenic (Avoid in pregnancy).")
+        elif selected_drug == "Carbamazepine": st.write("- **Auto-induction:** Clearance increases after 2 weeks.")
+        else: st.write("- **Excretion:** Primarily Renal. Adjust for low CrCl.")
 
 st.markdown('</td></tr></table>', unsafe_allow_html=True)
 st.markdown("<br><p style='text-align: center; color: #64748b; font-size: 0.8em;'>Clinical PK Project | MNU</p>", unsafe_allow_html=True)

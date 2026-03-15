@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import base64
 
-# --- 1. وظيفة الخلفية والستايل الجمالي ---
+# --- 1. وظيفة الخلفية والستايل الجمالي المعدل ---
 def set_page_bg_from_local(bin_file):
     try:
         with open(bin_file, 'rb') as f:
@@ -20,28 +20,37 @@ def set_page_bg_from_local(bin_file):
             box-shadow: 0 15px 35px rgba(30, 58, 138, 0.15);
             border: 1px solid rgba(30, 58, 138, 0.1);
         }}
-        .main-cell {{ padding: 30px; }}
+        .main-cell {{ padding: 25px; }} /* تقليل الـ Padding الداخلي للمربع */
+        
+        /* تصغير حجم مربع العنوان الداخلي (بروفايل) */
         .custom-title {{ 
-            color: white; font-size: 20px; font-weight: bold; 
+            color: white; 
+            font-size: 16px; /* صغرنا حجم الخط */
+            font-weight: bold; 
             background: linear-gradient(90deg, #1e3a8a, #3b82f6);
-            padding: 12px 20px; border-radius: 12px; margin-bottom: 25px; text-align: center;
+            padding: 8px 15px; /* صغرنا المسافات الداخلية للمربع الأزرق */
+            border-radius: 10px; 
+            margin-bottom: 20px; 
+            text-align: center;
+            width: fit-content; /* خليناه ياخد حجم الكلام بس */
+            margin-left: auto;
+            margin-right: auto;
         }}
-        /* تعديل العناوين الرئيسية لتكون في المنتصف وبخط كبير */
+        
         .main-header {{
             color: #1e3a8a; 
             text-align: center; 
             font-weight: 800; 
-            font-size: 32px; /* خط كبير */
+            font-size: 32px; 
             margin-bottom: 5px;
             line-height: 1.2;
         }}
         .sub-header {{
             color: #475569; 
             text-align: center; 
-            font-size: 18px; /* حجم متوسط */
+            font-size: 16px; 
             font-weight: 500;
-            margin-bottom: 25px;
-            line-height: 1.4;
+            margin-bottom: 20px;
         }}
         .stButton>button {{ 
             background: linear-gradient(45deg, #1e3a8a, #1e40af);
@@ -59,27 +68,26 @@ if os.path.exists("bg.jpg"):
 
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_l:
-    if os.path.exists("uni_logo.png"): st.image("uni_logo.png", width=85)
+    if os.path.exists("uni_logo.png"): st.image("uni_logo.png", width=80)
 with col_r:
-    if os.path.exists("college_logo.png"): st.image("college_logo.png", width=85)
+    if os.path.exists("college_logo.png"): st.image("college_logo.png", width=80)
 
-# العناوين في المنتصف باستخدام الـ Classes اللي عرفناها في الـ CSS
 st.markdown('<div class="main-header">AED Dose Calculator</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Faculty of Pharmacy<br>Mansoura National University</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Faculty of Pharmacy - Mansoura National University</div>', unsafe_allow_html=True)
 
 # --- 3. المربع الجمالي ---
 st.markdown('''
 <table class="aesthetic-box">
     <tr>
         <td class="main-cell">
-            <div class="custom-title">📋 Patient Clinical Profile (AEDs)</div>
+            <div class="custom-title">📋 Patient Clinical Profile</div>
 ''', unsafe_allow_html=True)
 
 selected_drug = st.selectbox("💊 Select Antiepileptic Drug (AED)", ["Phenytoin", "Valproic acid", "Carbamazepine", "Levetiracetam"])
 calc_type = st.radio("Calculation Type", ["Initial Regimen", "Dose Adjustment"], horizontal=True)
 diagnosis = st.text_input("Diagnosis / Clinical Condition")
 
-st.markdown("<hr style='opacity: 0.1; margin: 20px 0;'>", unsafe_allow_html=True)
+st.markdown("<hr style='opacity: 0.1; margin: 15px 0;'>", unsafe_allow_html=True)
 
 c1, c2 = st.columns(2)
 with c1:
@@ -120,7 +128,7 @@ else: # Levetiracetam
     md = (target * cl * interval); ld_val, unit, step = 1000, "mg", 500
 
 if st.button("Generate AED Recommendation"):
-    st.markdown("<br><div class='custom-title' style='background: #10b981;'>📊 Results</div>", unsafe_allow_html=True)
+    st.markdown("<br><div class='custom-title' style='background: #10b981; width: auto;'>📊 Results</div>", unsafe_allow_html=True)
     m1, m2, m3 = st.columns(3)
     m1.metric("CrCl", f"{crcl:.1f}")
     m2.metric("Target", f"{target} mg/L")
@@ -136,4 +144,4 @@ if st.button("Generate AED Recommendation"):
         else: st.write("- **Excretion:** Primarily Renal. Adjust for low CrCl.")
 
 st.markdown('</td></tr></table>', unsafe_allow_html=True)
-st.markdown("<br><p style='text-align: center; color: #64748b; font-size: 0.8em;'>Clinical PK Project | MNU</p>", unsafe_allow_html=True)
+st.markdown("<br><p style='text-align: center; color: #64748b; font-size: 0.75em;'>Clinical PK Project | MNU</p>", unsafe_allow_html=True)

@@ -26,6 +26,23 @@ def set_page_bg_from_local(bin_file):
             background: linear-gradient(90deg, #1e3a8a, #3b82f6);
             padding: 12px 20px; border-radius: 12px; margin-bottom: 25px; text-align: center;
         }}
+        /* تعديل العناوين الرئيسية لتكون في المنتصف وبخط كبير */
+        .main-header {{
+            color: #1e3a8a; 
+            text-align: center; 
+            font-weight: 800; 
+            font-size: 32px; /* خط كبير */
+            margin-bottom: 5px;
+            line-height: 1.2;
+        }}
+        .sub-header {{
+            color: #475569; 
+            text-align: center; 
+            font-size: 18px; /* حجم متوسط */
+            font-weight: 500;
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }}
         .stButton>button {{ 
             background: linear-gradient(45deg, #1e3a8a, #1e40af);
             color: white; font-weight: bold; border-radius: 15px; height: 3.5em;
@@ -35,21 +52,20 @@ def set_page_bg_from_local(bin_file):
     except:
         st.markdown("<style>.stApp {background-color: #f8fafc;}</style>", unsafe_allow_html=True)
 
-# --- 2. الإعدادات واللوجوهات (تم التبديل هنا) ---
+# --- 2. الإعدادات واللوجوهات ---
 st.set_page_config(page_title="AED PK Calculator", layout="centered")
 if os.path.exists("bg.jpg"):
     set_page_bg_from_local('bg.jpg')
 
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_l:
-    # لوجو الجامعة على الشمال
     if os.path.exists("uni_logo.png"): st.image("uni_logo.png", width=85)
 with col_r:
-    # لوجو الكلية على اليمين
     if os.path.exists("college_logo.png"): st.image("college_logo.png", width=85)
 
-st.markdown("<h1>AED Dose Calculator</h1>", unsafe_allow_html=True)
-st.markdown("<h4>Faculty of Pharmacy - Mansoura National University</h4>", unsafe_allow_html=True)
+# العناوين في المنتصف باستخدام الـ Classes اللي عرفناها في الـ CSS
+st.markdown('<div class="main-header">AED Dose Calculator</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Faculty of Pharmacy<br>Mansoura National University</div>', unsafe_allow_html=True)
 
 # --- 3. المربع الجمالي ---
 st.markdown('''
@@ -84,7 +100,7 @@ with c2:
     else:
         target = st.slider("Target CSS (mg/L)", 12, 46, 20); interval = st.selectbox("Interval (Hours)", interval_options, index=3)
 
-# --- الحسابات العلمية ---
+# الحسابات العلمية
 if gender == "Male": crcl = ((140 - age) * weight) / (72 * scr)
 else: crcl = (((140 - age) * weight) / (72 * scr)) * 0.85
 
@@ -98,13 +114,10 @@ elif selected_drug == "Valproic acid":
     ld_val, unit, step = 20 * weight, "mg", 250
 elif selected_drug == "Carbamazepine":
     cl = 0.06 * weight; vd = 1.4 * weight; k = cl / vd
-    md = (target * cl * interval) 
-    ld_val, unit, step = 0, "mg", 200
+    md = (target * cl * interval); ld_val, unit, step = 0, "mg", 200
 else: # Levetiracetam
-    cl = (crcl * 0.6) / 1000 * 60 
-    vd = 0.6 * weight; k = cl / vd
-    md = (target * cl * interval)
-    ld_val, unit, step = 1000, "mg", 500
+    cl = (crcl * 0.6) / 1000 * 60; vd = 0.6 * weight; k = cl / vd
+    md = (target * cl * interval); ld_val, unit, step = 1000, "mg", 500
 
 if st.button("Generate AED Recommendation"):
     st.markdown("<br><div class='custom-title' style='background: #10b981;'>📊 Results</div>", unsafe_allow_html=True)
@@ -118,7 +131,7 @@ if st.button("Generate AED Recommendation"):
     
     with st.expander("🛡️ AED Monitoring & Safety"):
         if selected_drug == "Phenytoin": st.write("- **Zero-order kinetics:** Saturation occurs; monitoring is vital.")
-        elif selected_drug == "Valproic acid": st.write("- **Warning:** Highly Teratogenic (Avoid in pregnancy).")
+        elif selected_drug == "Valproic acid": st.write("- **Warning:** Highly Teratogenic.")
         elif selected_drug == "Carbamazepine": st.write("- **Auto-induction:** Clearance increases after 2 weeks.")
         else: st.write("- **Excretion:** Primarily Renal. Adjust for low CrCl.")
 

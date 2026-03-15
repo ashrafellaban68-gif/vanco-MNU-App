@@ -57,15 +57,9 @@ st.markdown('''
             <div class="custom-title">📋 Patient Clinical Profile (AEDs)</div>
 ''', unsafe_allow_html=True)
 
-selected_drug = st.selectbox("💊 Select Antiepileptic Drug (AED)", [
-    "Phenytoin", 
-    "Valproic acid", 
-    "Carbamazepine",
-    "Levetiracetam"
-])
-
+selected_drug = st.selectbox("💊 Select Antiepileptic Drug (AED)", ["Phenytoin", "Valproic acid", "Carbamazepine", "Levetiracetam"])
 calc_type = st.radio("Calculation Type", ["Initial Regimen", "Dose Adjustment"], horizontal=True)
-diagnosis = st.text_input("Diagnosis (e.g., Tonic-Clonic Seizures, Focal Epilepsy)")
+diagnosis = st.text_input("Diagnosis / Clinical Condition")
 
 st.markdown("<hr style='opacity: 0.1; margin: 20px 0;'>", unsafe_allow_html=True)
 
@@ -77,77 +71,57 @@ with c1:
     gender = st.selectbox("Gender", ["Male", "Female"])
 with c2:
     scr = st.number_input("Serum Creatinine (mg/dL)", min_value=0.1, value=1.0, format="%.2f")
-    
-    # قائمة الوقت الموحدة من 4 لـ 48
     interval_options = [4, 6, 8, 12, 24, 48]
     
     if selected_drug == "Phenytoin":
-        target = st.slider("Target CSS (mg/L)", 10, 20, 15)
-        interval = st.selectbox("Interval (Hours)", interval_options, index=4) # افتراضي 24
+        target = st.slider("Target CSS (mg/L)", 10, 20, 15); interval = st.selectbox("Interval (Hours)", interval_options, index=4)
     elif selected_drug == "Valproic acid":
-        target = st.slider("Target CSS (mg/L)", 50, 100, 75)
-        interval = st.selectbox("Interval (Hours)", interval_options, index=3) # افتراضي 12
+        target = st.slider("Target CSS (mg/L)", 50, 100, 75); interval = st.selectbox("Interval (Hours)", interval_options, index=3)
     elif selected_drug == "Carbamazepine":
-        target = st.slider("Target CSS (mg/L)", 4, 12, 8)
-        interval = st.selectbox("Interval (Hours)", interval_options, index=3) # افتراضي 12
-    else: # Levetiracetam
-        target = st.slider("Target CSS (mg/L)", 12, 46, 20)
-        interval = st.selectbox("Interval (Hours)", interval_options, index=3) # افتراضي 12
+        target = st.slider("Target CSS (mg/L)", 4, 12, 8); interval = st.selectbox("Interval (Hours)", interval_options, index=3)
+    else:
+        target = st.slider("Target CSS (mg/L)", 12, 46, 20); interval = st.selectbox("Interval (Hours)", interval_options, index=3)
 
 # --- الحسابات العلمية ---
+# 1. CrCl
 if gender == "Male": crcl = ((140 - age) * weight) / (72 * scr)
 else: crcl = (((140 - age) * weight) / (72 * scr)) * 0.85
 
+# 2. Drug specific calculations
 if selected_drug == "Phenytoin":
-    vmax = 7 * weight
-    km = 4
+    vmax, km = 7 * weight, 4
     md = (vmax * target) / (km + target)
-    ld_val = 15 * weight
-    unit, step = "mg", 50
+    ld_val, unit, step = 15 * weight, "mg", 50
 elif selected_drug == "Valproic acid":
-    cl = 0.008 * weight * 1000 
-    vd = 0.15 * weight
-    k = cl / (vd * 1000)
-    md = (target * k * vd * interval) / (1 - (2.71828 ** (-k * interval)))
-    ld_val = 20 * weight
-    unit, step = "mg", 250
+    cl = 0.008 * weight; vd = 0.15 * weight; k = cl / vd
+    md = (target * cl * interval) / (1 - (2.71828 ** (-k * interval))) # Correction applied
+    ld_val, unit, step = 20 * weight, "mg", 250
 elif selected_drug == "Carbamazepine":
-    cl = 0.06 * weight * 1000
-    vd = 1.4 * weight
-    k = cl / (vd * 1000)
-    md = (target * k * vd * interval) / (1 - (2.71828 ** (-k * interval)))
-    ld_val = 0 
-    unit, step = "mg", 200
+    cl = 0.06 * weight; vd = 1.4 * weight; k = cl / vd
+    md = (target * cl * interval) 
+    ld_val, unit, step = 0, "mg", 200
 else: # Levetiracetam
-    cl = (crcl * 0.6) * 60 
+    cl = (crcl * 0.6) / 1000 * 60 # L/hr
     vd = 0.6 * weight
-    k = cl / (vd * 1000)
-    md = (target * k * vd * interval) / (1 - (2.71828 ** (-k * interval)))
-    ld_val = 1000
-    unit, step = "mg", 500
+    k = cl / vd
+    md = (target * cl * interval)
+    ld_val, unit, step = 1000, "mg", 500
 
 if st.button("Generate AED Recommendation"):
     st.markdown("<br><div class='custom-title' style='background: #10b981;'>📊 Results</div>", unsafe_allow_html=True)
     m1, m2, m3 = st.columns(3)
     m1.metric("CrCl", f"{crcl:.1f}")
     m2.metric("Target", f"{target} mg/L")
-    m3.metric("Interval", f"{interval}h")
+    m3.metric("t½ (h)", f"{0.693/(k):.1f}" if selected_drug != "Phenytoin" else "N/A")
     
     f_md = round(md/step)*step
-    if ld_val > 0:
-        st.success(f"**Recommendation:** Give {round(ld_val/50)*50} mg Loading Dose, then {f_md} {unit} every {interval}h.")
-    else:
-        st.success(f"**Recommendation:** Start {f_md} {unit} every {interval}h (Titrate slowly).")
+    st.success(f"**Recommendation:** Give {round(ld_val/50)*50 if ld_val>0 else 'no'} mg LD, then {f_md} {unit} every {interval}h.")
     
     with st.expander("🛡️ AED Monitoring & Safety"):
-        if selected_drug == "Phenytoin":
-            st.write("- **Zero-order kinetics:** Small dose changes lead to large concentration jumps.\n- **Monitoring:** Check Albumin level.")
-        elif selected_drug == "Valproic acid":
-            st.write("- **Monitoring:** Liver Function Tests (LFTs) and Ammonia levels.\n- **Safety:** Teratogenic (Avoid in pregnancy).")
-        elif selected_drug == "Carbamazepine":
-            st.write("- **Auto-induction:** Drug clearance increases after 2-4 weeks.\n- **Safety:** Check for HLA-B*1502 risk.")
-        else:
-            st.write("- **Renal Adjustment:** Primarily cleared by kidneys.\n- **Safety:** Monitor for behavioral side effects.")
+        if selected_drug == "Phenytoin": st.write("- **Zero-order kinetics:** Saturation occurs; monitoring is vital.\n- **Note:** Check Albumin level.")
+        elif selected_drug == "Valproic acid": st.write("- **Safety:** Liver Function Tests (LFTs) required.\n- **Warning:** Highly Teratogenic.")
+        elif selected_drug == "Carbamazepine": st.write("- **Auto-induction:** Clearance increases after 2 weeks.\n- **Note:** Check for HLA-B*1502 risk.")
+        else: st.write("- **Excretion:** Primarily Renal. Adjust for low CrCl.\n- **Behavior:** Monitor for psychiatric side effects.")
 
 st.markdown('</td></tr></table>', unsafe_allow_html=True)
 st.markdown("<br><p style='text-align: center; color: #64748b; font-size: 0.8em;'>Clinical PK Project | MNU</p>", unsafe_allow_html=True)

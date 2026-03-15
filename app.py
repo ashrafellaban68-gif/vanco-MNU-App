@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import base64
 
-# --- 1. وظيفة الخلفية والستايل الجمالي ---
+# --- 1. وظيفة الخلفية والستايل الجمالي (تعديل لإخفاء المربع الأبيض) ---
 def set_page_bg_from_local(bin_file):
     try:
         with open(bin_file, 'rb') as f:
@@ -14,35 +14,45 @@ def set_page_bg_from_local(bin_file):
             url("data:image/png;base64,{bin_str}");
             background-size: cover; background-attachment: fixed;
         }}
+        
+        /* شيلنا خلفية المربع الأبيض والظلال والحدود */
         .aesthetic-box {{
-            width: 100%; background: rgba(255, 255, 255, 0.95);
-            border-radius: 25px; border-collapse: separate; overflow: hidden;
-            box-shadow: 0 15px 35px rgba(30, 58, 138, 0.15);
-            border: 1px solid rgba(30, 58, 138, 0.1);
+            width: 100%; 
+            background: transparent; /* جعلنا الخلفية شفافة */
+            border: none; /* حذف الحدود */
+            box-shadow: none; /* حذف الظل */
         }}
-        .main-cell {{ padding: 30px; }}
+        
+        .main-cell {{ padding: 10px 0px; }} /* تقليل المسافات */
+
         .custom-title {{ 
-            color: white; font-size: 20px; font-weight: bold; 
+            color: white; 
+            font-size: 18px; 
+            font-weight: bold; 
             background: linear-gradient(90deg, #1e3a8a, #3b82f6);
-            padding: 12px 20px; border-radius: 12px; margin-bottom: 25px; text-align: center;
+            padding: 10px 20px; 
+            border-radius: 12px; 
+            margin-bottom: 25px; 
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(30, 58, 138, 0.2); /* ظل للمربع الأزرق فقط */
         }}
-        /* تعديل العناوين الرئيسية لتكون في المنتصف وبخط كبير */
+
         .main-header {{
             color: #1e3a8a; 
             text-align: center; 
             font-weight: 800; 
-            font-size: 32px; /* خط كبير */
+            font-size: 32px; 
             margin-bottom: 5px;
-            line-height: 1.2;
         }}
+        
         .sub-header {{
             color: #475569; 
             text-align: center; 
-            font-size: 18px; /* حجم متوسط */
+            font-size: 18px; 
             font-weight: 500;
             margin-bottom: 25px;
-            line-height: 1.4;
         }}
+
         .stButton>button {{ 
             background: linear-gradient(45deg, #1e3a8a, #1e40af);
             color: white; font-weight: bold; border-radius: 15px; height: 3.5em;
@@ -63,17 +73,11 @@ with col_l:
 with col_r:
     if os.path.exists("college_logo.png"): st.image("college_logo.png", width=85)
 
-# العناوين في المنتصف باستخدام الـ Classes اللي عرفناها في الـ CSS
 st.markdown('<div class="main-header">AED Dose Calculator</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">Faculty of Pharmacy<br>Mansoura National University</div>', unsafe_allow_html=True)
 
-# --- 3. المربع الجمالي ---
-st.markdown('''
-<table class="aesthetic-box">
-    <tr>
-        <td class="main-cell">
-            <div class="custom-title">📋 Patient Clinical Profile (AEDs)</div>
-''', unsafe_allow_html=True)
+# --- 3. عرض المحتوى (المربعات الزرقاء كفواصل) ---
+st.markdown('<div class="custom-title">📋 Patient Clinical Profile (AEDs)</div>', unsafe_allow_html=True)
 
 selected_drug = st.selectbox("💊 Select Antiepileptic Drug (AED)", ["Phenytoin", "Valproic acid", "Carbamazepine", "Levetiracetam"])
 calc_type = st.radio("Calculation Type", ["Initial Regimen", "Dose Adjustment"], horizontal=True)
@@ -100,7 +104,7 @@ with c2:
     else:
         target = st.slider("Target CSS (mg/L)", 12, 46, 20); interval = st.selectbox("Interval (Hours)", interval_options, index=3)
 
-# الحسابات العلمية
+# الحسابات
 if gender == "Male": crcl = ((140 - age) * weight) / (72 * scr)
 else: crcl = (((140 - age) * weight) / (72 * scr)) * 0.85
 
@@ -135,5 +139,4 @@ if st.button("Generate AED Recommendation"):
         elif selected_drug == "Carbamazepine": st.write("- **Auto-induction:** Clearance increases after 2 weeks.")
         else: st.write("- **Excretion:** Primarily Renal. Adjust for low CrCl.")
 
-st.markdown('</td></tr></table>', unsafe_allow_html=True)
 st.markdown("<br><p style='text-align: center; color: #64748b; font-size: 0.8em;'>Clinical PK Project | MNU</p>", unsafe_allow_html=True)

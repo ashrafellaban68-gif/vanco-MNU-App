@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import base64
 
-# --- 1. وظيفة الخلفية والستايل الجمالي ---
+# --- 1. وظيفة الخلفية والستايل الجمالي المعدل ---
 def set_page_bg_from_local(bin_file):
     try:
         with open(bin_file, 'rb') as f:
@@ -15,28 +15,38 @@ def set_page_bg_from_local(bin_file):
             background-size: cover; background-attachment: fixed;
         }}
         
-        /* جعل اللوجو في المنتصف تماماً */
-        .logo-container {{
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
+        /* بروزة العنوان الرئيسي بشكل احترافي */
+        .main-header {{
+            color: #1e3a8a;
+            text-align: center;
+            font-weight: 800;
+            font-size: 35px;
+            margin: 10px auto;
+            padding: 15px;
+            border: 3px solid #1e3a8a; /* البرواز */
+            border-radius: 15px;
+            width: fit-content;
+            background: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 15px rgba(30, 58, 138, 0.2); /* توهج خفيف للبرواز */
+        }}
+
+        .sub-header {{
+            color: #475569; 
+            text-align: center; 
+            font-size: 18px; 
+            font-weight: 600;
+            margin-bottom: 30px;
+            letter-spacing: 0.5px;
         }}
 
         .custom-title {{ 
-            color: white; 
-            font-size: 18px; 
-            font-weight: bold; 
+            color: white; font-size: 17px; font-weight: bold; 
             background: linear-gradient(90deg, #1e3a8a, #3b82f6);
-            padding: 10px 20px; 
-            border-radius: 12px; 
-            margin-bottom: 25px; 
-            text-align: center;
+            padding: 10px 20px; border-radius: 12px; margin-bottom: 25px; 
+            text-align: center; width: fit-content; margin-left: auto; margin-right: auto;
             box-shadow: 0 4px 15px rgba(30, 58, 138, 0.2);
         }}
 
-        .main-header {{ color: #1e3a8a; text-align: center; font-weight: 800; font-size: 32px; margin-bottom: 5px; }}
-        .sub-header {{ color: #475569; text-align: center; font-size: 18px; font-weight: 500; margin-bottom: 25px; }}
-        
         .stButton>button {{ 
             background: linear-gradient(45deg, #1e3a8a, #1e40af);
             color: white; font-weight: bold; border-radius: 15px; height: 3.5em; width: 100%;
@@ -46,28 +56,25 @@ def set_page_bg_from_local(bin_file):
     except:
         st.markdown("<style>.stApp {background-color: #f8fafc;}</style>", unsafe_allow_html=True)
 
-# --- 2. الإعدادات واللوجو الخاص بك ---
+# --- 2. الإعدادات واللوجو ---
 st.set_page_config(page_title="AED PK Calculator", layout="centered")
 if os.path.exists("bg.jpg"):
     set_page_bg_from_local('bg.jpg')
 
-# عرض اللوجو الخاص بك في المنتصف
-col_left, col_mid, col_right = st.columns([1, 1, 1])
-with col_mid:
-    if os.path.exists("my_logo.png"): 
-        st.image("my_logo.png", width=120) # تقدر تتحكم في العرض من هنا
-    else:
-        st.info("قم بتسمية اللوجو my_logo.png ووضعه في المجلد")
+# اللوجو بتاعك في النص
+col_l, col_m, col_r = st.columns([1, 1, 1])
+with col_m:
+    if os.path.exists("my_logo.png"): st.image("my_logo.png", width=110)
 
+# العنوان المتبروز واسم الجامعة
 st.markdown('<div class="main-header">AED Dose Calculator</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Advanced Clinical Pharmacokinetics System</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Faculty of Pharmacy<br>Mansoura National University</div>', unsafe_allow_html=True)
 
-# --- 3. بقية المحتوى الشفاف ---
+# --- 3. المحتوى ---
 st.markdown('<div class="custom-title">📋 Patient Clinical Profile (AEDs)</div>', unsafe_allow_html=True)
 
 selected_drug = st.selectbox("💊 Select Antiepileptic Drug (AED)", ["Phenytoin", "Valproic acid", "Carbamazepine", "Levetiracetam"])
 calc_type = st.radio("Calculation Type", ["Initial Regimen", "Dose Adjustment"], horizontal=True)
-diagnosis = st.text_input("Diagnosis / Clinical Condition")
 
 st.markdown("<hr style='opacity: 0.1; margin: 20px 0;'>", unsafe_allow_html=True)
 
@@ -89,7 +96,7 @@ with c2:
     else:
         target = st.slider("Target CSS (mg/L)", 12, 46, 20); interval = st.selectbox("Interval (Hours)", interval_options, index=3)
 
-# الحسابات (نفس المعادلات الدقيقة)
+# الحسابات
 if gender == "Male": crcl = ((140 - age) * weight) / (72 * scr)
 else: crcl = (((140 - age) * weight) / (72 * scr)) * 0.85
 
@@ -114,7 +121,9 @@ if st.button("Generate AED Recommendation"):
     st.success(f"**Recommendation:** Give {round(ld_val/50)*50 if ld_val>0 else 'no'} mg LD, then {f_md} {unit} every {interval}h.")
     
     with st.expander("🛡️ Full AED Monitoring & Safety Plan"):
-        # (نفس تفاصيل المراقبة اللي ضيفناها سابقاً)
-        st.write(f"Clinical guidance points for {selected_drug} are active...")
+        if selected_drug == "Phenytoin": st.write("- **Zero-order kinetics:** Saturation occurs; monitoring is vital.")
+        elif selected_drug == "Valproic acid": st.write("- **Warning:** Highly Teratogenic.")
+        elif selected_drug == "Carbamazepine": st.write("- **Auto-induction:** Clearance increases after 2 weeks.")
+        else: st.write("- **Excretion:** Primarily Renal. Adjust for low CrCl.")
 
-st.markdown("<br><p style='text-align: center; color: #64748b; font-size: 0.8em;'>Clinical PK Project | AED System</p>", unsafe_allow_html=True)
+st.markdown("<br><p style='text-align: center; color: #64748b; font-size: 0.8em;'>Clinical PK Project | MNU</p>", unsafe_allow_html=True)

@@ -68,15 +68,16 @@ def set_page_style(bin_file):
         border-radius: 50px;
         font-weight: bold;
         width: 100%;
+        height: 3.5em;
     }}
     </style>
     ''', unsafe_allow_html=True)
 
-# --- 2. الإعدادات ---
+# --- 2. الإعدادات واللوجو ---
 st.set_page_config(page_title="AED PK Pro", layout="centered")
 set_page_style('bg.jpg' if os.path.exists("bg.jpg") else "")
 
-# اللوجو "على جنب"
+# اللوجو "على جنب" (يسار)
 if os.path.exists("my_logo.png"):
     col_l, col_r = st.columns([1, 4])
     with col_l:
@@ -101,12 +102,11 @@ calc_type = st.radio("Calculation Type", ["Initial Regimen", "Dose Adjustment"],
 
 st.divider()
 
-# تم استرجاع الطول هنا وتوزيع البيانات بشكل أفضل
 col1, col2 = st.columns(2)
 with col1:
     age = st.number_input("Age (Years)", 1, 100, 30)
     weight = st.number_input("Weight (kg)", 10.0, 150.0, 70.0)
-    height = st.number_input("Height (cm)", 50, 250, 170) # خانة الطول رجعت
+    height = st.number_input("Height (cm)", 50, 250, 170)
 with col2:
     gender = st.selectbox("Gender", ["Male", "Female"])
     scr = st.number_input("Serum Creatinine", 0.1, 5.0, 1.0)
@@ -114,7 +114,7 @@ with col2:
 
 interval = st.selectbox("Dosing Interval (Hours)", [4, 6, 8, 12, 24, 48], index=3)
 
-# الحسابات
+# الحسابات العلمية
 if gender == "Male": crcl = ((140 - age) * weight) / (72 * scr)
 else: crcl = (((140 - age) * weight) / (72 * scr)) * 0.85
 
@@ -133,7 +133,26 @@ if st.button("Generate Recommendation"):
     m1.metric("CrCl", f"{crcl:.1f}")
     m2.metric("Target", f"{target}")
     m3.metric("t½ (h)", f"{0.693/k:.1f}" if selected_drug != "Phenytoin" else "N/A")
+    
     f_md = round(md/step)*step
     st.success(f"**Final Plan:** Give {round(ld_val/50)*50 if ld_val>0 else 'no'} mg LD, then {f_md} {unit} every {interval}h.")
+
+    # --- استرجاع جزء Monitoring & Safety ---
+    with st.expander("🛡️ Clinical Monitoring & Safety Plan"):
+        st.info(f"Clinical Guidance for **{selected_drug}**")
+        if selected_drug == "Phenytoin":
+            st.warning("**Saturation Kinetics:** Small dose increases can cause toxic jumps.")
+            st.write("- **Monitoring:** Monitor SCr and Albumin levels (Free Phenytoin).")
+            st.write("- **Side Effects:** Watch for Nystagmus, Ataxia, and Gingival Hyperplasia.")
+        elif selected_drug == "Valproic acid":
+            st.write("- **Liver Safety:** Periodic LFTs are mandatory.")
+            st.write("- **Toxicity:** Watch for Ammonia levels and Pancreatitis symptoms.")
+        elif selected_drug == "Carbamazepine":
+            st.warning("**Auto-induction:** Metabolism increases after 2-4 weeks.")
+            st.write("- **Skin Safety:** Screen for HLA-B*1502 risk.")
+            st.write("- **Electrolytes:** Monitor for Hyponatremia.")
+        else: # Levetiracetam
+            st.write("- **Renal:** Adjust dose strictly based on CrCl.")
+            st.write("- **Psychiatric:** Monitor for behavioral changes (Irritability).")
 
 st.markdown("<br><p style='text-align: center; color: #1e3a8a; font-weight: bold;'>Clinical PK Project | MNU</p>", unsafe_allow_html=True)

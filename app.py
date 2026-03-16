@@ -19,7 +19,6 @@ def set_page_style(bin_file):
         background-attachment: fixed;
     }}
     
-    /* ستايل اللوجو (على جنب مع وضوح عالي) */
     .logo-img {{
         width: 100px;
         filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.2)) brightness(1.1);
@@ -68,6 +67,7 @@ def set_page_style(bin_file):
         color: white;
         border-radius: 50px;
         font-weight: bold;
+        width: 100%;
     }}
     </style>
     ''', unsafe_allow_html=True)
@@ -76,12 +76,12 @@ def set_page_style(bin_file):
 st.set_page_config(page_title="AED PK Pro", layout="centered")
 set_page_style('bg.jpg' if os.path.exists("bg.jpg") else "")
 
-# عرض اللوجو "على جنب" (ناحية اليسار)
+# اللوجو "على جنب"
 if os.path.exists("my_logo.png"):
-    col_logo, col_empty = st.columns([1, 4]) # تقسيم الصفحة لجعل اللوجو جهة اليسار
-    with col_logo:
-        logo_base64 = base64.b64encode(open("my_logo.png", "rb").read()).decode()
-        st.markdown(f'<img src="data:image/png;base64,{logo_base64}" class="logo-img">', unsafe_allow_html=True)
+    col_l, col_r = st.columns([1, 4])
+    with col_l:
+        logo_b64 = base64.b64encode(open("my_logo.png", "rb").read()).decode()
+        st.markdown(f'<img src="data:image/png;base64,{logo_b64}" class="logo-img">', unsafe_allow_html=True)
 
 # العنوان
 st.markdown('''
@@ -101,21 +101,23 @@ calc_type = st.radio("Calculation Type", ["Initial Regimen", "Dose Adjustment"],
 
 st.divider()
 
+# تم استرجاع الطول هنا وتوزيع البيانات بشكل أفضل
 col1, col2 = st.columns(2)
 with col1:
     age = st.number_input("Age (Years)", 1, 100, 30)
     weight = st.number_input("Weight (kg)", 10.0, 150.0, 70.0)
-    gender = st.selectbox("Gender", ["Male", "Female"])
+    height = st.number_input("Height (cm)", 50, 250, 170) # خانة الطول رجعت
 with col2:
+    gender = st.selectbox("Gender", ["Male", "Female"])
     scr = st.number_input("Serum Creatinine", 0.1, 5.0, 1.0)
     target = st.slider("Target Conc (mg/L)", 5, 100, 15)
-    interval = st.selectbox("Interval (h)", [4, 6, 8, 12, 24, 48], index=3)
+
+interval = st.selectbox("Dosing Interval (Hours)", [4, 6, 8, 12, 24, 48], index=3)
 
 # الحسابات
 if gender == "Male": crcl = ((140 - age) * weight) / (72 * scr)
 else: crcl = (((140 - age) * weight) / (72 * scr)) * 0.85
 
-# المعادلات
 if selected_drug == "Phenytoin":
     vmax, km = 7 * weight, 4; md = (vmax * target) / (km + target); ld_val, unit, step = 15 * weight, "mg", 50
 elif selected_drug == "Valproic acid":

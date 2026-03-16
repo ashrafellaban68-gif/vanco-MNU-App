@@ -13,17 +13,25 @@ def set_page_style(bin_file):
 
     st.markdown(f'''
     <style>
-    /* تطبيق الخلفية */
     .stApp {{
         background-image: linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)), {bg_img};
         background-size: cover;
         background-attachment: fixed;
     }}
     
-    /* تصميم العنوان "المبهر" */
+    /* ستايل اللوجو عشان يكون واضح ومنور */
+    .logo-img {{
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 100px; /* رجعنا الحجم الصغير المتناسق */
+        filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.2)) brightness(1.1); /* توضيح اللوجو وإضافة ظل */
+        margin-bottom: 10px;
+    }}
+    
     .hero-header {{
         background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-        padding: 25px;
+        padding: 20px;
         border-radius: 20px;
         box-shadow: 0 10px 30px rgba(30, 58, 138, 0.4);
         margin-bottom: 10px;
@@ -34,51 +42,37 @@ def set_page_style(bin_file):
         color: white !important;
         text-align: center;
         font-weight: 900 !important;
-        font-size: 38px !important;
+        font-size: 32px !important; /* صغرنا حجم الخط شوية عشان التناسق */
         margin: 0;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
     }}
 
     .university-label {{
         color: #1e3a8a;
         text-align: center;
         font-weight: 700;
-        font-size: 18px;
-        margin-top: 15px;
-        margin-bottom: 30px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+        font-size: 17px;
+        margin-top: 10px;
+        margin-bottom: 25px;
     }}
     
-    /* ستايل الفواصل الزرقاء */
     .glass-title {{
         background: rgba(30, 58, 138, 0.9);
         color: white;
-        padding: 12px 25px;
+        padding: 10px 20px;
         border-radius: 50px;
         font-weight: bold;
         text-align: center;
         width: fit-content;
-        margin: 20px auto;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        margin: 15px auto;
         border: 1px solid rgba(255,255,255,0.2);
     }}
 
-    /* تجميل أزرار streamlit */
     .stButton>button {{
         background: linear-gradient(45deg, #1e3a8a, #3b82f6);
         color: white;
         border-radius: 50px;
-        border: none;
-        padding: 15px 30px;
-        font-size: 18px;
         font-weight: bold;
         transition: all 0.3s ease;
-        box-shadow: 0 5px 15px rgba(30, 58, 138, 0.3);
-    }}
-    .stButton>button:hover {{
-        transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(30, 58, 138, 0.4);
     }}
     </style>
     ''', unsafe_allow_html=True)
@@ -87,13 +81,11 @@ def set_page_style(bin_file):
 st.set_page_config(page_title="AED PK Pro", layout="centered")
 set_page_style('bg.jpg' if os.path.exists("bg.jpg") else "")
 
-# اللوجو في النص
-c1, c2, c3 = st.columns([1, 1.2, 1])
-with c2:
-    if os.path.exists("my_logo.png"):
-        st.image("my_logo.png", use_container_width=True)
+# عرض اللوجو بالستايل الجديد (الوضوح والظل)
+if os.path.exists("my_logo.png"):
+    st.markdown(f'''<img src="data:image/png;base64,{base64.b64encode(open("my_logo.png", "rb").read()).decode()}" class="logo-img">''', unsafe_allow_html=True)
 
-# العنوان الجديد "المبهر"
+# العنوان
 st.markdown('''
     <div class="hero-header">
         <h1>AED PK CALCULATOR</h1>
@@ -125,11 +117,11 @@ with col2:
 if gender == "Male": crcl = ((140 - age) * weight) / (72 * scr)
 else: crcl = (((140 - age) * weight) / (72 * scr)) * 0.85
 
+# المعادلات (نفس الدقة)
 if selected_drug == "Phenytoin":
     vmax, km = 7 * weight, 4; md = (vmax * target) / (km + target); ld_val, unit, step = 15 * weight, "mg", 50
 elif selected_drug == "Valproic acid":
-    cl = 0.008 * weight; vd = 0.15 * weight; k = cl / vd
-    md = (target * cl * interval) / (1 - (2.71828 ** (-k * interval))); ld_val, unit, step = 20 * weight, "mg", 250
+    cl = 0.008 * weight; vd = 0.15 * weight; k = cl / vd; md = (target * cl * interval) / (1 - (2.71828 ** (-k * interval))); ld_val, unit, step = 20 * weight, "mg", 250
 elif selected_drug == "Carbamazepine":
     cl = 0.06 * weight; vd = 1.4 * weight; k = cl / vd; md = (target * cl * interval); ld_val, unit, step = 0, "mg", 200
 else: # Levetiracetam
@@ -141,7 +133,6 @@ if st.button("Generate Recommendation"):
     m1.metric("CrCl", f"{crcl:.1f}")
     m2.metric("Target", f"{target}")
     m3.metric("t½ (h)", f"{0.693/k:.1f}" if selected_drug != "Phenytoin" else "N/A")
-    
     f_md = round(md/step)*step
     st.success(f"**Final Plan:** Give {round(ld_val/50)*50 if ld_val>0 else 'no'} mg LD, then {f_md} {unit} every {interval}h.")
 

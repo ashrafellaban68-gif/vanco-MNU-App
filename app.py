@@ -19,14 +19,11 @@ def set_page_style(bin_file):
         background-attachment: fixed;
     }}
     
-    /* ستايل اللوجو عشان يكون واضح ومنور */
+    /* ستايل اللوجو (على جنب مع وضوح عالي) */
     .logo-img {{
-        display: block;
-        margin-left: auto;
-        margin-right: auto;
-        width: 100px; /* رجعنا الحجم الصغير المتناسق */
-        filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.2)) brightness(1.1); /* توضيح اللوجو وإضافة ظل */
-        margin-bottom: 10px;
+        width: 100px;
+        filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.2)) brightness(1.1);
+        margin-bottom: 5px;
     }}
     
     .hero-header {{
@@ -42,7 +39,7 @@ def set_page_style(bin_file):
         color: white !important;
         text-align: center;
         font-weight: 900 !important;
-        font-size: 32px !important; /* صغرنا حجم الخط شوية عشان التناسق */
+        font-size: 32px !important;
         margin: 0;
     }}
 
@@ -64,7 +61,6 @@ def set_page_style(bin_file):
         text-align: center;
         width: fit-content;
         margin: 15px auto;
-        border: 1px solid rgba(255,255,255,0.2);
     }}
 
     .stButton>button {{
@@ -72,7 +68,6 @@ def set_page_style(bin_file):
         color: white;
         border-radius: 50px;
         font-weight: bold;
-        transition: all 0.3s ease;
     }}
     </style>
     ''', unsafe_allow_html=True)
@@ -81,9 +76,12 @@ def set_page_style(bin_file):
 st.set_page_config(page_title="AED PK Pro", layout="centered")
 set_page_style('bg.jpg' if os.path.exists("bg.jpg") else "")
 
-# عرض اللوجو بالستايل الجديد (الوضوح والظل)
+# عرض اللوجو "على جنب" (ناحية اليسار)
 if os.path.exists("my_logo.png"):
-    st.markdown(f'''<img src="data:image/png;base64,{base64.b64encode(open("my_logo.png", "rb").read()).decode()}" class="logo-img">''', unsafe_allow_html=True)
+    col_logo, col_empty = st.columns([1, 4]) # تقسيم الصفحة لجعل اللوجو جهة اليسار
+    with col_logo:
+        logo_base64 = base64.b64encode(open("my_logo.png", "rb").read()).decode()
+        st.markdown(f'<img src="data:image/png;base64,{logo_base64}" class="logo-img">', unsafe_allow_html=True)
 
 # العنوان
 st.markdown('''
@@ -117,7 +115,7 @@ with col2:
 if gender == "Male": crcl = ((140 - age) * weight) / (72 * scr)
 else: crcl = (((140 - age) * weight) / (72 * scr)) * 0.85
 
-# المعادلات (نفس الدقة)
+# المعادلات
 if selected_drug == "Phenytoin":
     vmax, km = 7 * weight, 4; md = (vmax * target) / (km + target); ld_val, unit, step = 15 * weight, "mg", 50
 elif selected_drug == "Valproic acid":

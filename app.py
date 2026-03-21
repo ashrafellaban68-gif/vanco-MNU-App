@@ -61,7 +61,7 @@ set_page_style('bg.jpg' if os.path.exists("bg.jpg") else "")
 # ==============================
 # 🏷️ Header
 # ==============================
-st.markdown('<div class="hero">💊 AED PK CLINICAL PLATFORM</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero">💊 Dose wise</div>', unsafe_allow_html=True)
 
 # ==============================
 # 📄 PDF Generation Function

@@ -61,7 +61,7 @@ set_page_style('bg.jpg' if os.path.exists("bg.jpg") else "")
 # ==============================
 # 🏷️ Header
 # ==============================
-st.markdown('<div class="hero">💊 Dose wise</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero">💊Dose wise</div>', unsafe_allow_html=True)
 
 # ==============================
 # 📄 PDF Generation Function
@@ -120,7 +120,7 @@ with tab1:
     interval = st.selectbox("Dosing Interval", [4, 6, 8, 12, 24], index=3)
 
     # ==============================
-    # 🧮 Calculations
+    # 🧮 Calculations (Corrected Scientific Logic)
     # ==============================
     if gender == "Male":
         crcl = ((140 - age) * weight) / (72 * scr)
@@ -129,48 +129,50 @@ with tab1:
 
     if selected_drug == "Phenytoin":
         vd = 0.7 * weight
-        cl = 0.02 * weight
-        k = cl / vd
+        vmax = 7 * weight  # mg/kg/day
+        km = 4             # mg/L
         ld = target * vd
-        md = (7 * weight * target) / (4 + target)
+        daily_md = (vmax * target) / (km + target)
+        md = daily_md / (24 / interval)
+        k = 0.03 # Approx for t1/2 display
 
     elif selected_drug == "Valproic acid":
         vd = 0.15 * weight
-        cl = 0.008 * weight
+        cl = 0.008 * weight # L/hr
         k = cl / vd
         ld = target * vd
         md = target * cl * interval
 
     elif selected_drug == "Carbamazepine":
         vd = 1.4 * weight
-        cl = 0.06 * weight
+        cl = 0.06 * weight # L/hr
         k = cl / vd
         ld = target * vd
         md = target * cl * interval
 
-    else:
+    else: # Levetiracetam
         vd = 0.6 * weight
-        cl = (crcl * 0.6) / 1000 * 60
+        cl = (crcl * 0.6) / 1000 * 60 # Cl in L/hr
         k = cl / vd
         ld = target * vd
         md = target * cl * interval
 
-    t_half = 0.693 / k
+    t_half = 0.693 / k if k > 0 else 0
 
-    # Renal Adjustment
-    if crcl < 50:
+    # Renal Adjustment (Except for Phenytoin/Non-renally cleared)
+    if selected_drug != "Phenytoin" and crcl < 50:
         md = md * (crcl / 100)
 
     # ==============================
     # 📊 Results
     # ==============================
     if st.button("🚀 Generate Plan"):
-        col1, col2, col3, col4 = st.columns(4)
+        col_res1, col_res2, col_res3, col_res4 = st.columns(4)
 
-        col1.metric("CrCl", f"{crcl:.1f}")
-        col2.metric("Vd", f"{vd:.2f}")
-        col3.metric("Cl", f"{cl:.2f}")
-        col4.metric("t½", f"{t_half:.2f}")
+        col_res1.metric("CrCl", f"{crcl:.1f}")
+        col_res2.metric("Vd (L)", f"{vd:.2f}")
+        col_res3.metric("Cl (L/h)", f"{cl:.2f}" if selected_drug != "Phenytoin" else "N/A")
+        col_res4.metric("t½ (h)", f"{t_half:.2f}" if selected_drug != "Phenytoin" else "N/A")
 
         st.success(f"""
         ✅ **Final Regimen**
@@ -206,7 +208,7 @@ with tab2:
         "Phenytoin": ("Na channel blocker", "10-20 mg/L", "Non-linear kinetics"),
         "Valproic acid": ("GABA enhancer", "50-100 mg/L", "Hepatotoxic"),
         "Carbamazepine": ("Na channel blocker", "4-12 mg/L", "Autoinduction"),
-        "Levetiracetam": ("SV2A modulator", "Not required", "Behavioral effects")
+        "Levetiracetam": ("SV2A modulator", "12-46 mg/L", "Behavioral effects")
     }
 
     mech, tdm, note = drug_data[selected_drug]
@@ -227,17 +229,17 @@ with tab3:
     st.subheader("Clinical Reasoning")
 
     st.write("### 📌 Mathematical Output")
-    st.write(f"- Maintenance Dose: {round(md)} mg")
+    st.write(f"- Maintenance Dose: {round(md)} mg every {interval} hr")
 
     st.write("### 🧠 Clinical Recommendation")
     if selected_drug == "Phenytoin":
-        st.warning("Avoid rapid dose increase (toxicity risk)")
+        st.warning("Avoid rapid dose increase (Non-linear toxicity risk)")
 
     if crcl < 50:
-        st.warning("Renal impairment → dose reduced")
+        st.warning("Renal impairment detected → dose reduction applied")
 
     st.write("### 🔬 TDM Link")
-    st.write("Measure after 4–5 half-lives")
+    st.write("Measure drug levels after 4–5 half-lives to ensure steady state.")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -247,23 +249,24 @@ with tab3:
 with tab4:
     st.markdown('<div class="section">', unsafe_allow_html=True)
 
-    st.subheader("Clinical Case")
+    st.subheader("Clinical Case Summary")
 
     st.write(f"""
-    **Patient:**
-    - Age: {age}
-    - Weight: {weight}
-    - Drug: {selected_drug}
+    **Patient Profile:**
+    - Age: {age} Years
+    - Weight: {weight} kg
+    - Selected Drug: {selected_drug}
 
-    **PK Analysis:**
-    - CrCl = {crcl:.1f}
+    **Pharmacokinetic Analysis:**
+    - Estimated CrCl: {crcl:.1f} mL/min
+    - Volume of Distribution (Vd): {vd:.2f} L
+    
+    **Final Regimen:**
+    - Recommended LD: {round(ld)} mg
+    - Recommended MD: {round(md)} mg every {interval} hr
 
-    **Plan:**
-    - LD: {round(ld)} mg
-    - MD: {round(md)} mg every {interval} hr
-
-    **Rationale:**
-    Personalized dosing based on PK parameters and renal function.
+    **Clinical Rationale:**
+    Dose calculation is individualized based on population PK parameters and renal clearance.
     """)
 
     st.markdown('</div>', unsafe_allow_html=True)

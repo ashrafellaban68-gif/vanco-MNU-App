@@ -8,7 +8,7 @@ from reportlab.lib.pagesizes import letter
 from io import BytesIO
 
 # ==============================
-# 🎨 1. Page Style & Layout Correction
+# 🎨 1. Premium Page Style
 # ==============================
 def set_page_style(bin_file):
     try:
@@ -40,11 +40,17 @@ def set_page_style(bin_file):
         background: rgba(255,255,255,0.9);
         padding: 25px;
         border-radius: 15px;
+        margin-top: 15px;
         box-shadow: 0 5px 15px rgba(0,0,0,0.05);
     }}
-    /* إزالة أي هوامش تلقائية قد تسبب المربع الأبيض */
-    .stSelectbox, .stNumberInput {{
-        margin-top: -10px;
+    .stButton>button {{
+        background: linear-gradient(45deg, #1e3a8a, #3b82f6);
+        color: white;
+        border-radius: 30px;
+        height: 3.5em;
+        width: 100%;
+        font-weight: bold;
+        border: none;
     }}
     </style>
     ''', unsafe_allow_html=True)
@@ -69,11 +75,16 @@ def create_pdf_report(age, weight, height, drug, crcl, ld, md, interval, css_max
     if css_max:
         content.append(Paragraph(f"- Predicted Css Max: {css_max:.2f} mg/L", styles['Normal']))
         content.append(Paragraph(f"- Predicted Css Min: {css_min:.2f} mg/L", styles['Normal']))
+    if extra_notes:
+        content.append(Spacer(1, 10))
+        content.append(Paragraph(f"<b>Clinical Notes:</b> {extra_notes}", styles['Normal']))
+    content.append(Spacer(20, 20))
+    content.append(Paragraph("<i>Note: Generated via AED PK Pro Platform.</i>", styles['Italic']))
     doc.build(content)
     return buffer.getvalue()
 
 # ==============================
-# ⚙️ 3. App Config
+# ⚙️ 3. Execution
 # ==============================
 st.set_page_config(page_title="AED PK Pro Platform", layout="wide")
 set_page_style('bg.jpg' if os.path.exists("bg.jpg") else "")
@@ -87,13 +98,10 @@ tab1, tab2, tab3, tab4 = st.tabs(["🎯 Calculator", "📚 Knowledge", "⚖️ D
 # ==============================
 with tab1:
     st.markdown('<div class="section">', unsafe_allow_html=True)
+    c_in, c_res = st.columns([1.2, 1])
     
-    # اختيار الدواء في الأعلى مباشرة بدون تقسيم أعمدة قد يسبب فراغ
-    selected_drug = st.selectbox("💊 Select Drug", ["Phenytoin", "Valproic acid", "Carbamazepine", "Levetiracetam"])
-    
-    col_in, col_out = st.columns([1.2, 1])
-    
-    with col_in:
+    with c_in:
+        selected_drug = st.selectbox("Select Drug", ["Phenytoin", "Valproic acid", "Carbamazepine", "Levetiracetam"])
         c1, c2 = st.columns(2)
         with c1:
             age = st.number_input("Age", 1, 100, 30)
@@ -106,6 +114,118 @@ with tab1:
         
         interval = st.selectbox("Interval (hr)", [4, 6, 8, 12, 24], index=3)
 
-        # Calculations
+        # --- Calculations Setup ---
         ht_in = height / 2.54
-        ibw = (50 + 2.3*(ht_in-60)) if gender=="Male" else (45.5 + 2.3*(ht
+        ibw = (50 + 2.3*(ht_in-60)) if gender=="Male" else (45.5 + 2.3*(ht_in-60))
+        dosing_weight = weight
+        is_obese = weight > (1.2 * ibw)
+        
+        # --- Phenytoin Advanced Inputs ---
+        s_factor = 0.92
+        albumin = 4.4
+        vmax, km = 7.0, 4.0
+        extra_info = ""
+
+        if selected_drug == "Phenytoin":
+            st.markdown("---")
+            st.subheader("🧬 Phenytoin Advanced Parameters")
+            if is_obese:
+                dosing_weight = ibw + 0.4 * (weight - ibw)
+                st.warning(f"Obesity Detected: Using Adjusted Weight ({dosing_weight:.1f} kg)")
+            
+            cp1, cp2 = st.columns(2)
+            with cp1:
+                vmax = st.number_input("Vmax (mg/kg/day)", 1.0, 15.0, 7.0)
+                albumin = st.number_input("Serum Albumin (g/dL)", 0.5, 6.0, 4.4)
+            with cp2:
+                km = st.number_input("Km (mg/L)", 1.0, 10.0, 4.0)
+                salt_type = st.selectbox("Dosage Form (S)", ["Sodium (0.92) - Cap/Inj", "Acid (1.0) - Susp/Tabs"])
+            
+            s_factor = 0.92 if "Sodium" in salt_type else 1.0
+            
+            if albumin < 4.4:
+                adj_target = target / ((0.2 * albumin) + 0.1)
+                extra_info = f"Albumin correction applied (Sheiner-Tozer). Adjusted target level: {adj_target:.1f} mg/L."
+
+        crcl_wt = ibw if is_obese else weight
+        crcl = ((140-age)*crcl_wt)/(72*scr) if gender=="Male" else ((140-age)*crcl_wt)/(72*scr)*0.85
+
+        # --- Specific Drug Logic ---
+        css_max, css_min = None, None
+        if selected_drug == "Phenytoin":
+            vd = 0.7 * dosing_weight
+            vmax_total = vmax * dosing_weight
+            md = ((vmax_total * target) / (km + target)) / (24/interval)
+            ld = target * vd
+            k_el = (vmax_total / (km + target)) / vd
+            css_max = (target / s_factor) + ((md * s_factor) / vd)
+            css_min = css_max * math.exp(-k_el * interval)
+            t_half = 0.693 / k_el
+        elif selected_drug == "Valproic acid":
+            vd, cl = 0.15 * weight, 0.008 * weight
+            k = cl/vd; ld, md = target*vd, target*cl*interval; t_half = 0.693/k
+        elif selected_drug == "Carbamazepine":
+            vd, cl = 1.4 * weight, 0.06 * weight
+            k = cl/vd; ld, md = target*vd, target*cl*interval; t_half = 0.693/k
+        else: # Levetiracetam
+            vd = 0.6 * weight; cl = (crcl * 0.6) / 1000 * 60
+            k = cl/vd; ld, md = target*vd, target*cl*interval; t_half = 0.693/k
+
+        if selected_drug != "Phenytoin" and crcl < 50: md *= (crcl/100)
+
+    with c_res:
+        st.subheader("Analysis Results")
+        if st.button("🚀 Calculate Plan"):
+            m1, m2, m3 = st.columns(3)
+            m1.metric("CrCl", f"{crcl:.1f}")
+            m2.metric("Vd (L)", f"{vd:.1f}")
+            m3.metric("t½ (h)", f"{t_half:.1f}" if selected_drug != "Phenytoin" else "N/A")
+            
+            if css_max:
+                st.info(f"Steady State: Peak {css_max:.2f} | Trough {css_min:.2f} mg/L")
+            if extra_info:
+                st.write(f"ℹ️ {extra_info}")
+            
+            st.success(f"**Final Regimen:** LD {round(ld)} mg | MD {round(md)} mg every {interval} hr")
+            
+            pdf_data = create_pdf_report(age, weight, height, selected_drug, crcl, ld, md, interval, css_max, css_min, extra_info)
+            st.download_button("📥 Download Report PDF", pdf_data, "PK_Report.pdf", "application/pdf")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ==============================
+# 📚 TAB 2 & ⚖️ TAB 3 & 📋 TAB 4
+# ==============================
+with tab2:
+    st.markdown('<div class="section">', unsafe_allow_html=True)
+    drug_info = {
+        "Phenytoin": ("Na Channel Blocker", "10-20 mg/L", "Non-linear kinetics. Protein binding is sensitive to Albumin levels."),
+        "Valproic acid": ("GABA Enhancer", "50-100 mg/L", "Monitor LFTs. High protein binding."),
+        "Carbamazepine": ("Na Channel Blocker", "4-12 mg/L", "Auto-induction requires dose reassessment after 2 weeks."),
+        "Levetiracetam": ("SV2A Modulator", "12-46 mg/L", "Renal adjustment is critical.")
+    }
+    mech, tdm, note = drug_info[selected_drug]
+    st.subheader(f"Drug Profile: {selected_drug}")
+    st.write(f"**Mechanism:** {mech}"); st.write(f"**TDM Range:** {tdm}"); st.info(note)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with tab3:
+    st.markdown('<div class="section">', unsafe_allow_html=True)
+    st.subheader("Clinical Decision Support")
+    if selected_drug == "Phenytoin" and albumin < 4.4:
+        st.error(f"Low Albumin Alert: Free phenytoin levels will be higher than normal. Adjusted Css is {adj_target:.1f} mg/L.")
+    if is_obese: st.warning("Obese Patient: Calculations adjusted using ABW for volume of distribution.")
+    if crcl < 50: st.error("Renal Impairment: Dose reduction applied to prevent accumulation.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with tab4:
+    st.markdown('<div class="section">', unsafe_allow_html=True)
+    st.subheader("Case Summary Presentation")
+    st.code(f"""
+    Patient: {age}Y, {weight}kg ({'Obese' if is_obese else 'Normal weight'})
+    Albumin: {albumin} g/dL | SCr: {scr} mg/dL
+    Drug: {selected_drug} | Form: {'Sodium' if s_factor==0.92 else 'Acid'}
+    Plan: LD {round(ld)} mg then {round(md)} mg every {interval}h
+    """, language="markdown")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("<center>💙 Clinical PK Project | MNU Faculty of Pharmacy</center>", unsafe_allow_html=True)

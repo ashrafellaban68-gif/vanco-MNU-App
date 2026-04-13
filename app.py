@@ -2,207 +2,235 @@ import streamlit as st
 import os
 import base64
 import math
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
 from io import BytesIO
 
 # ==============================
-# 🎨 1. Professional Medical UI & Animations
+# 🎨 1. Professional Medical UI & Transitions
 # ==============================
 def set_page_style():
     st.markdown('''
     <style>
-    /* Professional Fade-in Animation */
-    @keyframes slideUp {
+    /* Professional Fade & Slide Animation */
+    @keyframes fadeInUp {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
     }
     
     .stApp {
-        background-color: #f4f7f9;
+        background-color: #f8fafc;
     }
 
     /* Hero Section */
     .hero {
-        background: linear-gradient(135deg, #102a43, #243b53);
+        background: linear-gradient(135deg, #0f172a, #1e293b);
         padding: 40px;
-        border-radius: 0 0 30px 30px;
+        border-radius: 0 0 40px 40px;
         text-align: center;
         color: white;
         margin: -60px -20px 30px -20px;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        animation: slideUp 0.8s ease-out;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        animation: fadeInUp 0.6s ease-out;
     }
 
-    /* Standardized Medical Cards */
+    /* Card Styling with Transitions */
     .section {
         background: white;
         padding: 25px;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        border: 1px solid #d9e2ec;
-        margin-bottom: 20px;
-        animation: slideUp 1s ease-out;
-        transition: transform 0.3s ease;
+        border-radius: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 25px;
+        animation: fadeInUp 0.8s ease-out;
+        transition: all 0.3s ease-in-out;
     }
     .section:hover {
         transform: translateY(-5px);
-        border-color: #334e68;
+        box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+        border-color: #3b82f6;
     }
 
-    /* Medical Buttons */
+    /* Medical Button Styling */
     .stButton>button {
-        background: #102a43;
+        background: linear-gradient(45deg, #1e293b, #3b82f6);
         color: white;
-        border-radius: 8px;
-        font-weight: 600;
+        border-radius: 12px;
+        font-weight: 700;
         border: none;
-        padding: 10px 24px;
-        transition: all 0.3s;
+        padding: 12px 30px;
+        transition: all 0.4s ease;
     }
     .stButton>button:hover {
-        background: #243b53;
-        box-shadow: 0 4px 12px rgba(16, 42, 67, 0.2);
+        background: linear-gradient(45deg, #3b82f6, #1e293b);
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
     }
-
-    /* Custom Alert Styles */
-    .decision-card {
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 10px;
-        border-right: 5px solid;
+    
+    /* Tab Styling */
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
+    .stTabs [data-baseweb="tab"] {
+        background-color: #edf2f7;
+        border-radius: 10px 10px 0 0;
+        padding: 10px 20px;
     }
     </style>
     ''', unsafe_allow_html=True)
 
 # ==============================
-# 📄 2. PDF Report Generator
+# 📄 2. Fixed PDF Report Generator
 # ==============================
-def create_pdf_report(age, weight, drug, crcl, ld, md, interval, soap_text):
+def create_pdf_report(age, weight, drug, crcl, ld, md, interval, soap_text, analysis):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     styles = getSampleStyleSheet()
-    content = [
-        Paragraph("DoseWise Medical Report", styles['Title']),
-        Spacer(1, 20),
-        Paragraph(f"<b>Patient:</b> {age}Y | {weight}kg", styles['Normal']),
-        Paragraph(f"<b>Drug:</b> {drug} | <b>CrCl:</b> {crcl:.1f} mL/min", styles['Normal']),
-        Spacer(1, 20),
-        Paragraph(f"<b>Final Regimen:</b> {round(md)} mg q{interval}h (LD: {round(ld)} mg)", styles['Heading2']),
-        Spacer(1, 20),
-        Paragraph("<b>Official SOAP Note:</b>", styles['Heading3']),
-        Paragraph(soap_text.replace('\n', '<br/>'), styles['Normal'])
+    
+    # Custom Styles
+    title_style = ParagraphStyle('TitleStyle', parent=styles['Title'], textColor=colors.hexColor("#1e293b"), fontSize=22)
+    
+    content = []
+    content.append(Paragraph("DoseWise: Clinical Pharmacokinetics Report", title_style))
+    content.append(Spacer(1, 20))
+    
+    # Patient Data Table
+    data = [
+        ["Patient Age", f"{age} Years", "Current Drug", drug],
+        ["Total Weight", f"{weight} kg", "CrCl", f"{crcl:.1f} mL/min"]
     ]
+    t = Table(data, colWidths=[100, 150, 100, 150])
+    t.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.whitesmoke), ('GRID', (0,0), (-1,-1), 0.5, colors.grey)]))
+    content.append(t)
+    
+    content.append(Spacer(1, 25))
+    content.append(Paragraph(f"<b>Final Clinical Regimen:</b>", styles['Heading2']))
+    content.append(Paragraph(f"Loading Dose: {round(ld)} mg (Once)", styles['Normal']))
+    content.append(Paragraph(f"Maintenance Dose: {round(md)} mg every {interval} hours", styles['Normal']))
+    
+    content.append(Spacer(1, 25))
+    content.append(Paragraph("<b>SOAP Clinical Note:</b>", styles['Heading3']))
+    content.append(Paragraph(soap_text.replace('\n', '<br/>'), styles['Normal']))
+    
     doc.build(content)
     return buffer.getvalue()
 
 # ==============================
-# ⚙️ 3. Main App Execution
+# ⚙️ 3. Main Application Logic
 # ==============================
-st.set_page_config(page_title="DoseWise Clinical", layout="wide")
+st.set_page_config(page_title="DoseWise Clinical Master", layout="wide")
 set_page_style()
 
-st.markdown('<div class="hero"><h1>💊 DoseWise Clinical Pro</h1><p>Professional Pharmacokinetics Decision Support System</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="hero"><h1>💊 DoseWise Clinical Master</h1><p>Integrated PK Decision Support & SOAP Documentation</p></div>', unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["🎯 Calculator", "📚 Monograph", "⚖️ Clinical Decision", "📋 Case Summary", "📝 SOAP Note"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["🎯 Calculator", "📚 Drug Knowledge", "⚖️ Clinical Decision", "📋 Case Summary", "📝 SOAP Note"])
 
-# --- Calculation Logic ---
 with tab1:
-    selected_drug = st.selectbox("Medication Selection", ["Phenytoin", "Valproic acid", "Carbamazepine", "Levetiracetam"])
-    c_in, c_res = st.columns([1.2, 1])
+    st.markdown('<div class="section">', unsafe_allow_html=True)
+    selected_drug = st.selectbox("Choose Medication", ["Phenytoin", "Valproic acid", "Carbamazepine", "Levetiracetam"])
+    col_in, col_res = st.columns([1.3, 1])
     
-    with c_in:
-        st.markdown('<div class="section">', unsafe_allow_html=True)
-        g1, g2 = st.columns(2)
-        with g1:
-            age = st.number_input("Age", 1, 100, 30)
-            weight = st.number_input("Weight (kg)", 10.0, 250.0, 70.0)
+    with col_in:
+        c1, c2 = st.columns(2)
+        with c1:
+            age = st.number_input("Age (Years)", 1, 100, 30)
+            weight = st.number_input("Actual Weight (kg)", 10.0, 250.0, 70.0)
             height = st.number_input("Height (cm)", 50, 250, 170)
-        with g2:
+        with c2:
             gender = st.selectbox("Gender", ["Male", "Female"])
-            scr = st.number_input("SCr (mg/dL)", 0.1, 5.0, 1.0)
-            target = st.slider("Target Css (mg/L)", 5, 100, 15)
-        interval = st.selectbox("Interval (hr)", [4, 6, 8, 12, 24], index=3)
-        st.markdown('</div>', unsafe_allow_html=True)
+            scr = st.number_input("Serum Creatinine (mg/dL)", 0.1, 5.0, 1.0)
+            target = st.slider("Target Steady-State Css (mg/L)", 5, 100, 15)
+        interval = st.selectbox("Dosing Interval (hr)", [4, 6, 8, 12, 24], index=3)
 
-        # Advanced Logic
-        ht_in = height / 2.54; ibw = (50 + 2.3*(ht_in-60)) if gender=="Male" else (45.5 + 2.3*(ht_in-60))
-        d_wt = weight; is_obese = weight > (1.2 * ibw)
-        s_f, alb, vmax, km, extra = 0.92, 4.4, 7.0, 4.0, ""
+        # Advanced PK Calculation Logic
+        ht_in = height / 2.54
+        ibw = (50 + 2.3*(ht_in-60)) if gender=="Male" else (45.5 + 2.3*(ht_in-60))
+        dosing_weight = weight
+        is_obese = weight > (1.2 * ibw)
+        
+        s_factor, alb, vmax, km = 0.92, 4.4, 7.0, 4.0
 
         if selected_drug == "Phenytoin":
-            st.markdown('<div class="section">', unsafe_allow_html=True)
-            if is_obese: d_wt = ibw + 0.4 * (weight - ibw)
-            p1, p2 = st.columns(2)
-            with p1:
-                vmax = st.number_input("Vmax (mg/kg/d)", 1.0, 15.0, 7.0); alb = st.number_input("Albumin (g/dL)", 0.5, 6.0, 4.4)
-            with p2:
-                km = st.number_input("Km (mg/L)", 1.0, 10.0, 4.0); salt = st.selectbox("Form", ["Sodium (0.92)", "Acid (1.0)"])
-            s_f = 0.92 if "Sodium" in salt else 1.0
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown("---")
+            if is_obese: dosing_weight = ibw + 0.4 * (weight - ibw)
+            cp1, cp2 = st.columns(2)
+            with cp1:
+                vmax = st.number_input("Vmax (mg/kg/d)", 1.0, 15.0, 7.0)
+                alb = st.number_input("Albumin (g/dL)", 0.5, 6.0, 4.4)
+            with cp2:
+                km = st.number_input("Km (mg/L)", 1.0, 10.0, 4.0)
+                salt = st.selectbox("Salt Form", ["Sodium (S=0.92)", "Acid (S=1.0)"])
+            s_factor = 0.92 if "Sodium" in salt else 1.0
 
         crcl_wt = ibw if is_obese else weight
         crcl = ((140-age)*crcl_wt)/(72*scr) if gender=="Male" else ((140-age)*crcl_wt)/(72*scr)*0.85
 
         if selected_drug == "Phenytoin":
-            vd = 0.7 * d_wt; vmax_t = vmax * d_wt; md = ((vmax_t * target) / (km + target)) / (24/interval); ld = target * vd
-            k_el = (vmax_t / (km + target)) / vd; t_h = 0.693 / k_el; peak = (target/s_f)+((md*s_f)/vd); trough = peak * math.exp(-k_el*interval)
-        else: # Standard Linear
-            vd = 0.6 * weight; cl = (crcl * 0.6) / 1000 * 60; k = cl/vd; ld, md = target*vd, target*cl*interval; t_h = 0.693/k
+            vd = 0.7 * dosing_weight; vmax_t = vmax * dosing_weight
+            md = ((vmax_t * target) / (km + target)) / (24/interval); ld = target * vd
+            k_el = (vmax_t / (km + target)) / vd; t_half = 0.693 / k_el
+            peak = (target/s_factor)+((md*s_factor)/vd); trough = peak * math.exp(-k_el * interval)
+        else:
+            vd = 0.6 * weight; cl = (crcl * 0.6) / 1000 * 60; k = cl/vd; ld, md = target*vd, target*cl*interval; t_half = 0.693/k
 
-    with c_res:
-        st.markdown('<div class="section" style="height: 100%;">', unsafe_allow_html=True)
-        st.subheader("📊 Clinical Analysis")
-        if st.button("🚀 Execute PK Model"):
-            st.metric("CrCl", f"{crcl:.1f} mL/min")
-            st.metric("Volume of Dist. (Vd)", f"{vd:.1f} L")
-            if selected_drug == "Phenytoin": st.info(f"Expected Trough: {trough:.2f} mg/L")
-            st.success(f"Recommended Regimen:\n\n{round(md)} mg every {interval}h")
+        if selected_drug != "Phenytoin" and crcl < 50: md *= (crcl/100)
+    
+    with col_res:
+        st.markdown('<div style="background: #f1f5f9; padding: 20px; border-radius: 15px; border: 1px dashed #cbd5e1;">', unsafe_allow_html=True)
+        st.subheader("📊 Output Metrics")
+        if st.button("🚀 Calculate PK Regimen"):
+            st.metric("CrCl (Cockcroft-Gault)", f"{crcl:.1f} mL/min")
+            st.metric("Volume of Distribution", f"{vd:.1f} Liters")
+            if selected_drug == "Phenytoin": st.info(f"Steady State: Peak {peak:.1f} | Trough {trough:.1f}")
+            st.success(f"Recommended Plan:\n\n{round(md)} mg q{interval}h")
         st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# --- TAB 3: Clinical Decision (The "Brain") ---
+# --- TAB 3: Clinical Decision (The Content You Wanted) ---
 with tab3:
     st.markdown('<div class="section">', unsafe_allow_html=True)
-    st.subheader("⚖️ Pharmacist's Decision Support")
-    
+    st.subheader("⚖️ Clinical Decision Support Analysis")
     if is_obese:
-        st.error(f"⚠️ **Obesity Alert:** Actual weight is >20% over IBW. Dosing adjusted to ABW ({d_wt:.1f} kg).")
-    else:
-        st.success("✅ **Weight Status:** Patient is within normal weight range for dosing.")
-    
+        st.error(f"❗ **Dosing Weight Alert:** Patient is obese. Dosing weight adjusted from {weight}kg to ABW {dosing_weight:.1f}kg to avoid toxicity.")
     if crcl < 50:
-        st.warning(f"⚠️ **Renal Adjustment:** CrCl is {crcl:.1f} mL/min. Maintenance dose reduction considered for non-linear drugs.")
-    
+        st.warning(f"⚠️ **Renal Impairment:** CrCl is {crcl:.1f} mL/min. Caution advised; maintenance dose reduced to prevent accumulation.")
     if selected_drug == "Phenytoin" and alb < 4.4:
-        adj_c = target / ((0.2 * alb) + 0.1)
-        st.info(f"ℹ️ **Albumin Correction:** Low albumin detected. Adjusted Target concentration is {adj_c:.1f} mg/L.")
-    
-    st.markdown(f"**Final Clinical Recommendation:** Initiate {selected_drug} with a Loading Dose of {round(ld)}mg to achieve rapid steady state.")
+        adj_target = target / ((0.2 * alb) + 0.1)
+        st.info(f"💡 **Albumin Correction:** Low albumin detected ({alb}g/dL). Adjusted target for therapy is {adj_target:.1f} mg/L.")
+    st.write("**Pharmacist Note:** Target Css is within therapeutic window. Loading dose recommended for immediate seizure control.")
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- TAB 4: Case Summary ---
-with tab4:
-    st.markdown('<div class="section">', unsafe_allow_html=True)
-    st.subheader("📋 Case Data Summary")
-    st.write(f"- **Patient Profile:** {age}Y {gender}, {weight}kg")
-    st.write(f"- **Calculated CrCl:** {crcl:.1f} mL/min")
-    st.write(f"- **Pharmacokinetic Profile:** Half-life ~{t_h:.1f} hours")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# --- TAB 5: SOAP Note (Separated) ---
+# --- TAB 5: SOAP Note & PRINTING (Everything Together) ---
 with tab5:
     st.markdown('<div class="section">', unsafe_allow_html=True)
-    st.subheader("📝 Clinical SOAP Note")
-    soap_txt = f"S: {age}Y {gender} patient presents for {selected_drug} dose optimization.\nO: Weight {weight}kg, SCr {scr}mg/dL, CrCl {crcl:.1f}mL/min. Albumin {alb if selected_drug=='Phenytoin' else 'N/A'}.\nA: Patient requires individualized dosing due to {'obesity' if is_obese else 'body weight'} and renal status.\nP: Administer LD {round(ld)}mg once, then MD {round(md)}mg q{interval}h. Monitor serum levels."
+    st.subheader("📝 Professional SOAP Documentation")
     
-    st.markdown(f'''
-    <div style="background: #f0f4f8; padding: 20px; border-radius: 10px; border-left: 10px solid #102a43;">
-        {soap_txt.replace('\n', '<br><br>')}
-    </div>
-    ''', unsafe_allow_html=True)
+    soap_txt = f"S: {age}Y {gender} patient. Target Css: {target}mg/L.\nO: Weight {weight}kg, SCr {scr}mg/dL, CrCl {crcl:.1f}mL/min. IBW: {ibw:.1f}kg.\nA: Regimen optimized for {selected_drug} considering {'obesity' if is_obese else 'normal weight'}.\nP: Start LD {round(ld)}mg once. Follow with MD {round(md)}mg q{interval}h. Monitor levels."
     
-    st.download_button("📥 Download Official PDF", create_pdf_report(age, weight, selected_drug, crcl, ld, md, interval, soap_txt))
+    st.markdown(f'''<div style="background: #f0f9ff; padding: 20px; border-radius: 12px; border-left: 8px solid #0f172a; font-family: monospace;">
+        {soap_txt.replace('\n', '<br><br>')}</div>''', unsafe_allow_html=True)
+    
+    # --- PRINT BUTTON (Fixed) ---
+    st.markdown("---")
+    pdf_data = create_pdf_report(age, weight, selected_drug, crcl, ld, md, interval, soap_txt, "")
+    st.download_button(label="📥 Download Clinical PDF Report", data=pdf_data, file_name=f"DoseWise_Report_{selected_drug}.pdf", mime="application/pdf")
     st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown("<center style='color: #627d98;'>DoseWise Clinical Pro v2.0 | MNU Faculty of Pharmacy</center>", unsafe_allow_html=True)
+with tab4:
+    st.markdown('<div class="section">', unsafe_allow_html=True)
+    st.subheader("📋 Final Case Summary")
+    st.table({"Parameter": ["Age", "Weight", "IBW", "CrCl", "Drug", "Vd"], 
+              "Value": [f"{age}Y", f"{weight}kg", f"{ibw:.1f}kg", f"{crcl:.1f}mL/min", selected_drug, f"{vd:.1f}L"]})
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with tab2:
+    st.markdown('<div class="section">', unsafe_allow_html=True)
+    drugs_info = {
+        "Phenytoin": "Therapeutic Range: 10-20 mg/L. SE: Gingival hyperplasia, Nystagmus.",
+        "Valproic acid": "Therapeutic Range: 50-100 mg/L. SE: Weight gain, Hepatotoxicity.",
+        "Carbamazepine": "Therapeutic Range: 4-12 mg/L. SE: Autoinduction, Hyponatremia.",
+        "Levetiracetam": "Therapeutic Range: 12-46 mg/L. SE: Behavioral changes, Renal clearance."
+    }
+    st.info(drugs_info[selected_drug])
+    st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("<center style='color:#94a3b8;'>DoseWise Clinical Master v3.0 | 2024</center>", unsafe_allow_html=True)

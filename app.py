@@ -9,7 +9,7 @@ from reportlab.lib import colors
 from io import BytesIO
 
 # ==============================
-# 🎨 1. Premium Page Style (Your Design)
+# 🎨 1. Premium Page Style
 # ==============================
 def set_page_style(bin_file):
     try:
@@ -58,7 +58,7 @@ def set_page_style(bin_file):
     ''', unsafe_allow_html=True)
 
 # ==============================
-# 📄 2. Professional PDF Report Generator
+# 📄 2. PDF Report Generator
 # ==============================
 def create_pdf_report(age, weight, drug, crcl, ld, md, interval, soap_text="", peak=None, trough=None):
     buffer = BytesIO()
@@ -88,38 +88,42 @@ def create_pdf_report(age, weight, drug, crcl, ld, md, interval, soap_text="", p
     return buffer.getvalue()
 
 # ==============================
-# ⚙️ 3. Main Framework
+# ⚙️ 3. App Setup & Logic
 # ==============================
 st.set_page_config(page_title="DoseWise | Clinical PK Platform", layout="wide")
 set_page_style('bg.jpg' if os.path.exists("bg.jpg") else "")
 
 st.markdown('<div class="hero">💊 DoseWise Platform</div>', unsafe_allow_html=True)
 
-# --- 📚 Full Knowledge Database ---
+# --- 📚 Full Knowledge Database (تم إصلاح الـ Keys) ---
 drug_db = {
     "Phenytoin": {
         "Max": "1000 mg/day", 
         "Range": "10-20 mg/L", 
-        "SE": "Gingival hyperplasia, Ataxia, Nystagmus, Osteomalacia.", 
-        "Decision": "⚠️ Non-linear Michaelis-Menten kinetics. Capacity-limited metabolism. Check Albumin correction."
+        "SE": "Gingival hyperplasia, Ataxia, Nystagmus.", 
+        "Note": "Non-linear Michaelis-Menten kinetics. Monitor levels closely.",
+        "Decision": "⚠️ Non-linear kinetics detected. Check Albumin correction if low."
     },
     "Valproic acid": {
         "Max": "60 mg/kg/day", 
         "Range": "50-100 mg/L", 
-        "SE": "Hepatotoxicity, Thrombocytopenia, Weight gain.", 
-        "Decision": "⚠️ Highly protein-bound drug. Monitor Liver Function Tests (LFTs) and platelet count."
+        "SE": "Hepatotoxicity, Hair loss, Weight gain.", 
+        "Note": "Highly protein bound. Monitor Liver function.",
+        "Decision": "⚠️ Highly protein-bound. Monitor LFTs and platelet count."
     },
     "Carbamazepine": {
         "Max": "1600 mg/day", 
         "Range": "4-12 mg/L", 
-        "SE": "SIADH (Hyponatremia), SJS, Diplopia.", 
-        "Decision": "⚠️ Potent Enzyme Inducer. Risk of Auto-induction within 2-4 weeks. Monitor Na levels."
+        "SE": "Hyponatremia, Stevens-Johnson Syndrome.", 
+        "Note": "Auto-induction risk within 2-4 weeks.",
+        "Decision": "⚠️ Potent Enzyme Inducer. Risk of Auto-induction. Monitor Sodium."
     },
     "Levetiracetam": {
         "Max": "3000 mg/day", 
         "Range": "12-46 mg/L", 
-        "SE": "Behavioral irritability, Aggression, Somnolence.", 
-        "Decision": "✅ Low drug interaction risk. Primarily renally cleared. Mandatory dose adjustment for renal impairment."
+        "SE": "Irritability, Behavioral changes.", 
+        "Note": "Primarily renally cleared drug.",
+        "Decision": "✅ Primarily renally cleared. High safety profile."
     }
 }
 
@@ -144,7 +148,7 @@ with tab1:
 
         ht_in = height / 2.54; ibw = (50 + 2.3*(ht_in-60)) if gender=="Male" else (45.5 + 2.3*(ht_in-60))
         is_obese = weight > (1.2 * ibw); dosing_weight = weight
-        s_factor, albumin, vmax, km, extra_info = 0.92, 4.4, 7.0, 4.0, ""
+        s_factor, albumin, vmax, km = 0.92, 4.4, 7.0, 4.0
 
         if selected_drug == "Phenytoin":
             st.markdown("<h2 style='color:#1e3a8a;'>🧬 Phenytoin Advanced Parameters</h2>", unsafe_allow_html=True)
@@ -225,7 +229,7 @@ with tab5:
         <p><b>Subjective:</b> Patient presents for {selected_drug} management.</p>
         <p><b>Objective:</b> Weight {weight}kg | CrCl {crcl:.1f}mL/min | SCr {scr}mg/dL.</p>
         <p><b>Assessment:</b> Regimen optimized for body status and {selected_drug} kinetics.</p>
-        <p><b>Plan:</b> LD <b>{round(ld)}mg</b> then MD <b>{round(md)}mg q{interval}h</b>. Monitor for {drug_db[selected_drug]['SE']}.</p>
+        <p><b>Plan:</b> Start LD <b>{round(ld)}mg</b> then MD <b>{round(md)}mg q{interval}h</b>. Monitor for {drug_db[selected_drug]['SE']}.</p>
     </div>
     ''', unsafe_allow_html=True)
     st.download_button("📥 Download SOAP Report", pdf_data, f"SOAP_{selected_drug}.pdf", key="dl5")

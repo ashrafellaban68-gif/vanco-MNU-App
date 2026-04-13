@@ -89,7 +89,7 @@ def create_pdf_report(age, weight, height, drug, crcl, ld, md, interval, css_max
 st.set_page_config(page_title="AED PK Pro Platform", layout="wide")
 set_page_style('bg.jpg' if os.path.exists("bg.jpg") else "")
 
-st.markdown('<div class="hero">💊 AED PK CLINICAL PLATFORM</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero">💊 Dose wise</div>', unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4 = st.tabs(["🎯 Calculator", "📚 Knowledge", "⚖️ Decision", "📋 Case Summary"])
 

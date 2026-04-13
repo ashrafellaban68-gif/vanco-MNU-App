@@ -90,7 +90,7 @@ st.set_page_config(page_title="DoseWise | Clinical PK Platform", layout="wide")
 set_page_style('bg.jpg' if os.path.exists("bg.jpg") else "")
 
 # الاسم الجديد
-st.markdown('<div class="hero">💊 DoseWise Platform</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero">💊 Dose Wise </div>', unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4 = st.tabs(["🎯 Calculator", "📚 Knowledge", "⚖️ Decision", "📋 Case Summary"])
 

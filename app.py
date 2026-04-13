@@ -9,7 +9,7 @@ from reportlab.lib import colors
 from io import BytesIO
 
 # ==============================
-# 🎨 1. Premium Page Style (Your Original Design)
+# 🎨 1. Premium Page Style (حافظت على ديزاينك بالظبط)
 # ==============================
 def set_page_style(bin_file):
     try:
@@ -58,9 +58,9 @@ def set_page_style(bin_file):
     ''', unsafe_allow_html=True)
 
 # ==============================
-# 📄 2. PDF Report Generator
+# 📄 2. Professional PDF Report Generator
 # ==============================
-def create_pdf_report(age, weight, drug, crcl, ld, md, interval, soap_text=""):
+def create_pdf_report(age, weight, drug, crcl, ld, md, interval, soap_text="", peak=None, trough=None):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     styles = getSampleStyleSheet()
@@ -78,6 +78,9 @@ def create_pdf_report(age, weight, drug, crcl, ld, md, interval, soap_text=""):
     
     content.append(Spacer(1, 25))
     content.append(Paragraph(f"<b>Final Regimen:</b> LD {round(ld)} mg | MD {round(md)} mg q{interval}h", styles['Heading2']))
+    if peak:
+        content.append(Paragraph(f"Steady State: Peak {peak:.2f} | Trough {trough:.2f}", styles['Normal']))
+    
     content.append(Spacer(1, 20))
     content.append(Paragraph("<b>Clinical SOAP Note:</b>", styles['Heading3']))
     content.append(Paragraph(soap_text.replace('\n', '<br/>'), styles['Normal']))
@@ -100,7 +103,6 @@ drug_db = {
     "Levetiracetam": {"Max": "3000 mg/d", "Range": "12-46 mg/L", "SE": "Irritability, Behavioral changes.", "Note": "Primarily renally cleared."}
 }
 
-# --- TABS (Moved up as requested) ---
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["🎯 Calculator", "📚 Drug Knowledge", "⚖️ Clinical Decision", "📋 Case Summary", "📝 SOAP Note"])
 
 with tab1:
@@ -120,7 +122,6 @@ with tab1:
             target = st.slider("Target Css (mg/L)", 5, 100, 15 if selected_drug != "Valproic acid" else 75)
         interval = st.selectbox("Interval (hr)", [4, 6, 8, 12, 24], index=3)
 
-        # Logic Setup
         ht_in = height / 2.54; ibw = (50 + 2.3*(ht_in-60)) if gender=="Male" else (45.5 + 2.3*(ht_in-60))
         is_obese = weight > (1.2 * ibw); dosing_weight = weight
         s_factor, albumin, vmax, km, extra_info = 0.92, 4.4, 7.0, 4.0, ""
@@ -147,30 +148,33 @@ with tab1:
             css_max = (target / s_factor) + ((md * s_factor) / vd); css_min = css_max * math.exp(-k_el * interval)
         else:
             vd, cl = 0.6 * weight, (crcl * 0.6) / 1000 * 60; k = cl/vd; ld, md = target*vd, target*cl*interval; t_half = 0.693/k
-
         if selected_drug != "Phenytoin" and crcl < 50: md *= (crcl/100)
     
     with col_res:
-        st.subheader("📊 Analysis Results")
+        # رجعت العنوان والأيقونة كما في الصورة بالظبط
+        st.markdown("<h2 style='color:#1e293b;'>📊 Analysis Results</h2>", unsafe_allow_html=True)
         if st.button("🚀 Calculate Plan"):
-            st.metric("CrCl", f"{crcl:.1f} mL/min")
-            if selected_drug == "Phenytoin": st.info(f"Steady State: Peak {css_max:.2f} | Trough {css_min:.2f}")
+            st.write(f"CrCl")
+            st.markdown(f"<h1 style='font-size: 50px;'>{crcl:.1f} mL/min</h1>", unsafe_allow_html=True)
+            if selected_drug == "Phenytoin":
+                st.info(f"Steady State: Peak {css_max:.2f} | Trough {css_min:.2f}")
             st.success(f"Recommended Regimen: LD {round(ld)}mg | MD {round(md)}mg q{interval}h")
+        
+        # إضافة زر الطباعة هنا أيضاً ليظهر في هذا التبويب
+        soap_content = f"S: {age}Y patient. O: CrCl {crcl:.1f}mL/min. A: Optimized for {selected_drug}. P: LD {round(ld)}mg, MD {round(md)}mg q{interval}h."
+        pdf_data = create_pdf_report(age, weight, selected_drug, crcl, ld, md, interval, soap_content, (css_max if selected_drug=="Phenytoin" else None), (css_min if selected_drug=="Phenytoin" else None))
+        st.download_button("📥 Download PDF Report", pdf_data, f"DoseWise_{selected_drug}.pdf", key="dl1")
+
     st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("<center>💙 Clinical PK Project | MNU Faculty of Pharmacy</center>", unsafe_allow_html=True)
 
-# Generate PDF Data for all tabs
-soap_content = f"S: {age}Y {gender.lower()} patient. O: CrCl {crcl:.1f}mL/min, Weight {weight}kg. A: PK optimization for {selected_drug}. P: LD {round(ld)}mg, MD {round(md)}mg every {interval}h."
-pdf_data = create_pdf_report(age, weight, selected_drug, crcl, ld, md, interval, soap_content)
-
+# --- بقية التبويبات مع زر الطباعة ---
 with tab2:
     st.markdown('<div class="section">', unsafe_allow_html=True)
     db = drug_db[selected_drug]
     st.subheader(f"📚 {selected_drug} Monograph")
     k1, k2 = st.columns(2)
-    with k1: 
-        st.write(f"**Target Range:** {db['Range']}")
-        st.write(f"**Max Dose:** {db['Max']}")
-        st.write(f"**Clinical Note:** {db['Note']}")
+    with k1: st.write(f"**Target Range:** {db['Range']}"); st.write(f"**Max Dose:** {db['Max']}")
     with k2: st.error(f"**Side Effects:** {db['SE']}")
     st.download_button("📥 Download Report", pdf_data, f"Report_{selected_drug}.pdf", key="dl2")
     st.markdown('</div>', unsafe_allow_html=True)
@@ -182,15 +186,14 @@ with tab3:
     if crcl < 50: st.warning(f"⚠️ **Renal:** Maintenance dose reduced due to CrCl {crcl:.1f}.")
     if selected_drug == "Phenytoin" and albumin < 4.4:
         adj_c = target / ((0.2 * albumin) + 0.1)
-        st.info(f"💡 **Albumin Correction:** Low albumin ({albumin} g/dL). Adjusted Target Css: {adj_c:.1f} mg/L.")
-    st.write(f"**Expert Recommendation:** Initiate {selected_drug} therapy and monitor levels after {round(t_half*5)} hours.")
+        st.info(f"💡 **Albumin Correction:** Adjusted Target Css: {adj_c:.1f} mg/L.")
     st.download_button("📥 Download Report", pdf_data, f"Report_{selected_drug}.pdf", key="dl3")
     st.markdown('</div>', unsafe_allow_html=True)
 
 with tab4:
     st.markdown('<div class="section">', unsafe_allow_html=True)
     st.markdown("<h2 style='text-align:center; color:#1e3a8a;'>📋 Case Summary Table</h2>", unsafe_allow_html=True)
-    st.table({"Clinical Parameter": ["Age", "Actual Weight", "IBW", "Est. CrCl", "Drug Selection", "Vd"], 
+    st.table({"Clinical Parameter": ["Age", "Weight", "IBW", "Est. CrCl", "Drug Selection", "Vd"], 
               "Value": [f"{age} Y", f"{weight} kg", f"{ibw:.1f} kg", f"{crcl:.1f} mL/min", selected_drug, f"{vd:.1f} L"]})
     st.download_button("📥 Download Report", pdf_data, f"Report_{selected_drug}.pdf", key="dl4")
     st.markdown('</div>', unsafe_allow_html=True)
@@ -203,10 +206,8 @@ with tab5:
         <p><b>Subjective:</b> Patient presents for {selected_drug} management.</p>
         <p><b>Objective:</b> Weight {weight}kg | CrCl {crcl:.1f}mL/min | SCr {scr}mg/dL.</p>
         <p><b>Assessment:</b> Regimen optimized for body status and drug kinetics.</p>
-        <p><b>Plan:</b> Start LD <b>{round(ld)}mg</b> then MD <b>{round(md)}mg q{interval}h</b>. Monitor for {db['SE']}.</p>
+        <p><b>Plan:</b> Start LD <b>{round(ld)}mg</b> then MD <b>{round(md)}mg q{interval}h</b>.</p>
     </div>
     ''', unsafe_allow_html=True)
     st.download_button("📥 Download SOAP Report", pdf_data, f"SOAP_{selected_drug}.pdf", key="dl5")
     st.markdown('</div>', unsafe_allow_html=True)
-
-st.markdown("<center>💙 **DoseWise** | Clinical PK Project | MNU Faculty of Pharmacy</center>", unsafe_allow_html=True)

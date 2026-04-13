@@ -60,7 +60,7 @@ def set_page_style(bin_file):
 # ==============================
 # 📄 2. PDF Report Generator
 # ==============================
-def create_pdf_report(age, weight, drug, crcl, ld, md, interval, soap_text="", peak=None, trough=None):
+def create_pdf_report(age, weight, drug, crcl, ld, md, interval, soap_text="", peak=None, trough=None, vd=0, thalf=0):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     styles = getSampleStyleSheet()
@@ -70,7 +70,8 @@ def create_pdf_report(age, weight, drug, crcl, ld, md, interval, soap_text="", p
     
     data = [
         ["Patient Age", f"{age} Y", "Medication", drug],
-        ["Total Weight", f"{weight} kg", "Est. CrCl", f"{crcl:.1f} mL/min"]
+        ["Total Weight", f"{weight} kg", "Est. CrCl", f"{crcl:.1f} mL/min"],
+        ["Vd (L)", f"{vd:.1f} L", "t1/2 (h)", f"{thalf:.1f} h"]
     ]
     t = Table(data, colWidths=[100, 150, 100, 150])
     t.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.whitesmoke), ('GRID', (0,0), (-1,-1), 0.5, colors.grey)]))
@@ -95,36 +96,11 @@ set_page_style('bg.jpg' if os.path.exists("bg.jpg") else "")
 
 st.markdown('<div class="hero">💊 DoseWise Platform</div>', unsafe_allow_html=True)
 
-# --- 📚 Full Knowledge Database (تم إصلاح الـ Keys) ---
 drug_db = {
-    "Phenytoin": {
-        "Max": "1000 mg/day", 
-        "Range": "10-20 mg/L", 
-        "SE": "Gingival hyperplasia, Ataxia, Nystagmus.", 
-        "Note": "Non-linear Michaelis-Menten kinetics. Monitor levels closely.",
-        "Decision": "⚠️ Non-linear kinetics detected. Check Albumin correction if low."
-    },
-    "Valproic acid": {
-        "Max": "60 mg/kg/day", 
-        "Range": "50-100 mg/L", 
-        "SE": "Hepatotoxicity, Hair loss, Weight gain.", 
-        "Note": "Highly protein bound. Monitor Liver function.",
-        "Decision": "⚠️ Highly protein-bound. Monitor LFTs and platelet count."
-    },
-    "Carbamazepine": {
-        "Max": "1600 mg/day", 
-        "Range": "4-12 mg/L", 
-        "SE": "Hyponatremia, Stevens-Johnson Syndrome.", 
-        "Note": "Auto-induction risk within 2-4 weeks.",
-        "Decision": "⚠️ Potent Enzyme Inducer. Risk of Auto-induction. Monitor Sodium."
-    },
-    "Levetiracetam": {
-        "Max": "3000 mg/day", 
-        "Range": "12-46 mg/L", 
-        "SE": "Irritability, Behavioral changes.", 
-        "Note": "Primarily renally cleared drug.",
-        "Decision": "✅ Primarily renally cleared. High safety profile."
-    }
+    "Phenytoin": {"Max": "1000 mg/day", "Range": "10-20 mg/L", "SE": "Gingival hyperplasia, Ataxia, Nystagmus.", "Note": "Non-linear Michaelis-Menten kinetics.", "Decision": "⚠️ Non-linear kinetics detected. Monitor levels closely."},
+    "Valproic acid": {"Max": "60 mg/kg/day", "Range": "50-100 mg/L", "SE": "Hepatotoxicity, Hair loss, Weight gain.", "Note": "Highly protein bound.", "Decision": "⚠️ Protein-bound monitoring needed."},
+    "Carbamazepine": {"Max": "1600 mg/day", "Range": "4-12 mg/L", "SE": "Hyponatremia, SJS.", "Note": "Auto-induction risk.", "Decision": "⚠️ Potent Enzyme Inducer risk."},
+    "Levetiracetam": {"Max": "3000 mg/day", "Range": "12-46 mg/L", "SE": "Irritability, Behavioral changes.", "Note": "Primarily renally cleared.", "Decision": "✅ Renally cleared, high safety."}
 }
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["🎯 Calculator", "📚 Drug Knowledge", "⚖️ Clinical Decision", "📋 Case Summary", "📝 SOAP Note"])
@@ -170,8 +146,10 @@ with tab1:
             md = ((vmax_t * target) / (km + target)) / (24/interval); ld = target * vd
             k_el = (vmax_t / (km + target)) / vd; t_half = 0.693 / k_el
             css_max = (target / s_factor) + ((md * s_factor) / vd); css_min = css_max * math.exp(-k_el * interval)
+        elif selected_drug == "Valproic acid":
+            vd, cl = 0.15 * weight, 0.008 * weight; k_val = cl/vd; ld, md = target*vd, target*cl*interval; t_half = 0.693/k_val; k_el = k_val
         else:
-            vd, cl = 0.6 * weight, (crcl * 0.6) / 1000 * 60; k = cl/vd; ld, md = target*vd, target*cl*interval; t_half = 0.693/k
+            vd, cl = 0.6 * weight, (crcl * 0.6) / 1000 * 60; k_el = cl/vd; ld, md = target*vd, target*cl*interval; t_half = 0.693/k_el
         if selected_drug != "Phenytoin" and crcl < 50: md *= (crcl/100)
     
     with col_res:
@@ -179,12 +157,15 @@ with tab1:
         if st.button("🚀 Calculate Plan"):
             st.write(f"CrCl")
             st.markdown(f"<h1 style='font-size: 50px;'>{crcl:.1f} mL/min</h1>", unsafe_allow_html=True)
+            col_metrics1, col_metrics2 = st.columns(2)
+            col_metrics1.metric("Vd (L)", f"{vd:.1f}")
+            col_metrics2.metric("t½ (h)", f"{t_half:.1f}")
             if selected_drug == "Phenytoin":
                 st.info(f"Steady State: Peak {css_max:.2f} | Trough {css_min:.2f}")
             st.success(f"Regimen: LD {round(ld)}mg | MD {round(md)}mg q{interval}h")
         
-        soap_content = f"S: {age}Y patient. O: CrCl {crcl:.1f}mL/min. A: Optimized for {selected_drug}. P: LD {round(ld)}mg, MD {round(md)}mg q{interval}h."
-        pdf_data = create_pdf_report(age, weight, selected_drug, crcl, ld, md, interval, soap_content, (css_max if selected_drug=="Phenytoin" else None), (css_min if selected_drug=="Phenytoin" else None))
+        soap_content = f"S: {age}Y patient. O: CrCl {crcl:.1f}mL/min, Vd {vd:.1f}L, t1/2 {t_half:.1f}h. A: PK for {selected_drug}. P: LD {round(ld)}mg, MD {round(md)}mg q{interval}h."
+        pdf_data = create_pdf_report(age, weight, selected_drug, crcl, ld, md, interval, soap_content, (css_max if selected_drug=="Phenytoin" else None), (css_min if selected_drug=="Phenytoin" else None), vd, t_half)
         st.download_button("📥 Download Report", pdf_data, f"Report_{selected_drug}.pdf", key="dl1")
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -205,19 +186,18 @@ with tab3:
     st.markdown('<div class="section">', unsafe_allow_html=True)
     st.subheader("⚖️ Clinical Decision Support")
     st.info(f"**Expert Clinical Opinion:** {drug_db[selected_drug]['Decision']}")
-    if is_obese: st.error(f"❗ **Obesity:** ABW adjustment logic applied ({dosing_weight:.1f}kg).")
-    if crcl < 50: st.warning(f"⚠️ **Renal Status:** Caution. CrCl is {crcl:.1f} mL/min; Maintenance dose reduced.")
+    if is_obese: st.error(f"❗ **Obesity:** ABW used for dosing ({dosing_weight:.1f}kg).")
+    if crcl < 50: st.warning(f"⚠️ **Renal Status:** Caution. CrCl {crcl:.1f} mL/min; Maintenance dose reduced.")
     if selected_drug == "Phenytoin" and albumin < 4.4:
-        adj_c = target / ((0.2 * albumin) + 0.1)
-        st.info(f"💡 **Albumin correction:** Corrected Target Css is {adj_c:.1f} mg/L.")
+        st.info(f"💡 **Albumin correction:** Low Albumin ({albumin}). Adjusted target Css target.")
     st.download_button("📥 Download Report", pdf_data, f"Report_{selected_drug}.pdf", key="dl3")
     st.markdown('</div>', unsafe_allow_html=True)
 
 with tab4:
     st.markdown('<div class="section">', unsafe_allow_html=True)
     st.markdown("<h2 style='text-align:center; color:#1e3a8a;'>📋 Case Summary Table</h2>", unsafe_allow_html=True)
-    st.table({"Parameter": ["Age", "Actual Weight", "IBW", "Est. CrCl", "Vd", "Drug Choice"], 
-              "Value": [f"{age} Y", f"{weight} kg", f"{ibw:.1f} kg", f"{crcl:.1f} mL/min", f"{vd:.1f} L", selected_drug]})
+    st.table({"Clinical Parameter": ["Age", "Weight", "IBW", "Est. CrCl", "Vd", "t½ (Half-life)", "Ke (Elimination rate)"], 
+              "Value": [f"{age} Y", f"{weight} kg", f"{ibw:.1f} kg", f"{crcl:.1f} mL/min", f"{vd:.1f} L", f"{t_half:.1f} h", f"{k_el:.4f} h⁻¹"]})
     st.download_button("📥 Download Report", pdf_data, f"Report_{selected_drug}.pdf", key="dl4")
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -227,9 +207,9 @@ with tab5:
     st.markdown(f'''
     <div style="background-color: #f0f4f8; padding: 25px; border-radius: 12px; border-left: 10px solid #1e3a8a;">
         <p><b>Subjective:</b> Patient presents for {selected_drug} management.</p>
-        <p><b>Objective:</b> Weight {weight}kg | CrCl {crcl:.1f}mL/min | SCr {scr}mg/dL.</p>
-        <p><b>Assessment:</b> Regimen optimized for body status and {selected_drug} kinetics.</p>
-        <p><b>Plan:</b> Start LD <b>{round(ld)}mg</b> then MD <b>{round(md)}mg q{interval}h</b>. Monitor for {drug_db[selected_drug]['SE']}.</p>
+        <p><b>Objective:</b> Weight {weight}kg | CrCl {crcl:.1f}mL/min | Vd {vd:.1f}L | t½ {t_half:.1f}h.</p>
+        <p><b>Assessment:</b> Regimen optimized for kinetics ({'Non-linear' if selected_drug=='Phenytoin' else 'Linear'}).</p>
+        <p><b>Plan:</b> Start LD <b>{round(ld)}mg</b> then MD <b>{round(md)}mg q{interval}h</b>.</p>
     </div>
     ''', unsafe_allow_html=True)
     st.download_button("📥 Download SOAP Report", pdf_data, f"SOAP_{selected_drug}.pdf", key="dl5")

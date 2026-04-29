@@ -122,7 +122,7 @@ with tab1:
             target = st.slider("Target Css (mg/L)", 5, 100, 15 if selected_drug != "Valproic acid" else 75)
         interval = st.selectbox("Interval (hr)", [4, 6, 8, 12, 24], index=3)
 
-        # Basic Calculations
+        # Basic PK & Body Calculations
         height_m = height / 100
         ht_in = height / 2.54
         bmi = weight / (height_m ** 2)
@@ -145,9 +145,10 @@ with tab1:
         dosing_weight = adjbw if bmi >= 30 else weight
         s_factor, albumin_calc, vmax, km = 0.92, 4.4, 7.0, 4.0
 
+        # Phenytoin Advanced UI Section
         if selected_drug == "Phenytoin":
             st.markdown("---")
-            st.subheader("🧬 Phenytoin Advanced PK Parameters")
+            st.subheader("🧬 Phenytoin Advanced Parameters")
             cp1, cp2 = st.columns(2)
             with cp1:
                 vmax = st.number_input("Vmax (mg/kg/day)", 1.0, 15.0, 7.0)
@@ -157,7 +158,24 @@ with tab1:
                 salt = st.selectbox("Dosage Form (S)", ["Sodium (0.92) - Cap/Inj", "Acid (1.0) - Susp/Tab"])
             s_factor = 0.92 if "Sodium" in salt else 1.0
 
-        # PK Logic Calculations
+            # 🧪 FREE PHENYTOIN ASSESSMENT (Placed here as requested)
+            st.markdown("---")
+            st.markdown("### 🧪 Free Phenytoin Assessment")
+            f_col1, f_col2 = st.columns(2)
+            with f_col1:
+                total_phenytoin = st.number_input("Total Phenytoin Level (mcg/mL)", value=7.50, format="%.2f")
+                valproic_level = st.number_input("Valproic Acid Level (mcg/mL)", value=100.00, format="%.2f")
+            with f_col2:
+                albumin_case2 = st.number_input("Albumin Level (g/dL)", value=4.20, format="%.2f", key="alb_case2")
+            
+            estimated_free = total_phenytoin * 0.15 
+            st.metric("Estimated Free Phenytoin", f"{estimated_free:.2f} mcg/mL")
+            if 1 <= estimated_free <= 2: st.success("✅ Free range ok")
+            elif estimated_free < 1: st.warning("⚠️ Subtherapeutic")
+            else: st.error("🚨 Toxicity Risk")
+            st.markdown("---")
+
+        # PK Logic Execution
         if selected_drug == "Phenytoin":
             vd = 0.7 * dosing_weight; vmax_t = vmax * dosing_weight
             md = ((vmax_t * target) / (km + target)) / (24/interval); ld = target * vd
@@ -182,13 +200,12 @@ with tab1:
             m3.metric("CrCl", f"{crcl:.1f}")
             st.info(f"**BMI Status:** {bmi_status} | {weight_note}")
             
-            if crcl >= 90: st.success("🟢 Normal renal function")
-            elif crcl >= 60: st.info("🟡 Mild impairment")
-            elif crcl >= 30: st.warning("🟠 Moderate impairment")
-            else: st.error("🔴 Severe impairment / failure")
+            if crcl >= 90: st.success("🟢 Normal Renal Function")
+            elif crcl >= 30: st.warning("🟠 Moderate Impairment")
+            else: st.error("🔴 Severe Impairment")
 
             st.divider()
-            st.success(f"**Final Regimen:** LD {round(ld)}mg | MD {round(md)}mg q{interval}h")
+            st.success(f"**Regimen:** LD {round(ld)}mg | MD {round(md)}mg q{interval}h")
             col_pk1, col_pk2 = st.columns(2)
             col_pk1.metric("Vd (L)", f"{vd:.1f}")
             col_pk2.metric("t½ (h)", f"{t_half:.1f}")
@@ -199,41 +216,13 @@ with tab1:
             ranges = {"Phenytoin": "10-20 mg/L", "Valproic acid": "50-100 mg/L", "Carbamazepine": "4-12 mg/L", "Levetiracetam": "12-46 mg/L"}
             st.info(f"Therapeutic Range: {ranges[selected_drug]}")
             
-            # PDF Data Storage
-            soap_content = f"S: {age}Y patient. O: BMI {bmi:.1f}, CrCl {crcl:.1f}mL/min. A: PK optimized for {selected_drug}. P: LD {round(ld)}mg, MD {round(md)}mg q{interval}h."
+            soap_content = f"S: {age}Y patient. O: BMI {bmi:.1f}, CrCl {crcl:.1f}. A: PK for {selected_drug}. P: LD {round(ld)}mg, MD {round(md)}mg q{interval}h."
             pdf_data = create_pdf_report(age, weight, selected_drug, crcl, ld, md, interval, soap_content, (css_max if selected_drug=="Phenytoin" else None), (css_min if selected_drug=="Phenytoin" else None), vd, t_half)
-            st.download_button("📥 Download Report", pdf_data, f"DoseWise_{selected_drug}.pdf", key="dl1")
+            st.download_button("📥 Download Report", pdf_data, f"DoseWise_{selected_drug}.pdf")
         else:
-            st.info("👈 Enter data and click Calculate.")
+            st.info("👈 Fill data and click Calculate.")
 
     st.markdown('</div>', unsafe_allow_html=True)
-
-    # ==============================
-    # 🧪 EXPLICIT PHENYTOIN CASE 2 (Outside Column Calculation)
-    # ==============================
-    if selected_drug == "Phenytoin":
-        st.markdown('<div class="section">', unsafe_allow_html=True)
-        st.markdown("### 🧪 Free Phenytoin Assessment")
-        
-        col_case1, col_case2 = st.columns(2)
-        with col_case1:
-            total_phenytoin = st.number_input("Total Phenytoin Level (mcg/mL)", value=7.50, format="%.2f")
-            valproic_level = st.number_input("Valproic Acid Level (mcg/mL)", value=100.00, format="%.2f")
-        with col_case2:
-            albumin_case2 = st.number_input("Albumin Level (g/dL)", value=4.20, format="%.2f")
-            
-        estimated_free = total_phenytoin * 0.15 # As per your Case 2 logic
-        
-        st.metric("Estimated Free Phenytoin", f"{estimated_free:.2f} mcg/mL")
-        st.info("Therapeutic Free Phenytoin Range: 1 – 2 mcg/mL")
-
-        if 1 <= estimated_free <= 2:
-            st.success("✅ Free phenytoin within therapeutic range. No dose adjustment required.")
-        elif estimated_free < 1:
-            st.warning("⚠️ Subtherapeutic free phenytoin. Consider dose increase if clinically indicated.")
-        else:
-            st.error("⚠️ Elevated free phenytoin. Consider dose reduction and toxicity monitoring.")
-        st.markdown('</div>', unsafe_allow_html=True)
 
 with tab2:
     st.markdown('<div class="section">', unsafe_allow_html=True)
@@ -249,12 +238,12 @@ with tab3:
     st.subheader("⚖️ Clinical Decision Support")
     st.info(f"**Opinion:** {drug_db[selected_drug]['Decision']}")
     if bmi >= 30: st.error(f"❗ Obesity: Adjusted weight used ({adjbw:.1f}kg).")
-    if crcl < 50: st.warning(f"⚠️ Renal: Dosage adjusted for CrCl {crcl:.1f}.")
+    if crcl < 50: st.warning(f"⚠️ Renal: Maintenance dose reduced.")
     st.markdown('</div>', unsafe_allow_html=True)
 
 with tab4:
     st.markdown('<div class="section">', unsafe_allow_html=True)
-    st.markdown("<h2 style='text-align:center;'>📋 Case Summary</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center;'>📋 Case Summary Table</h2>", unsafe_allow_html=True)
     st.table({"Parameter": ["Age", "BMI", "IBW", "AdjBW", "CrCl", "Vd", "t½"], 
               "Value": [f"{age} Y", f"{bmi:.1f}", f"{ibw:.1f} kg", f"{adjbw:.1f} kg", f"{crcl:.1f}", f"{vd:.1f} L", f"{t_half:.1f} h"]})
     st.markdown('</div>', unsafe_allow_html=True)
@@ -264,9 +253,9 @@ with tab5:
     st.markdown("<h2 style='text-align:center;'>📝 SOAP Note</h2>", unsafe_allow_html=True)
     st.markdown(f'''
     <div style="background-color: #f0f4f8; padding: 25px; border-radius: 12px; border-left: 10px solid #1e3a8a;">
-        <p><b>Subjective:</b> Patient {age}Y {gender.lower()} on {selected_drug}.</p>
-        <p><b>Objective:</b> CrCl {crcl:.1f}, BMI {bmi:.1f}, Weight {weight}kg.</p>
-        <p><b>Assessment:</b> PK regimen optimized considering {weight_note}.</p>
+        <p><b>Subjective:</b> Patient {age}Y on {selected_drug}.</p>
+        <p><b>Objective:</b> CrCl {crcl:.1f}, BMI {bmi:.1f}.</p>
+        <p><b>Assessment:</b> PK regimen optimized for {selected_drug}.</p>
         <p><b>Plan:</b> LD {round(ld)}mg | MD {round(md)}mg q{interval}h.</p>
     </div>
     ''', unsafe_allow_html=True)

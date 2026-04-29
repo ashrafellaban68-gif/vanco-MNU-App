@@ -53,6 +53,7 @@ def set_page_style(bin_file):
         width: 100%;
         font-weight: bold;
         transition: 0.3s;
+        border: none;
     }}
     </style>
     ''', unsafe_allow_html=True)
@@ -97,10 +98,10 @@ set_page_style('bg.jpg' if os.path.exists("bg.jpg") else "")
 st.markdown('<div class="hero">💊 DoseWise Platform</div>', unsafe_allow_html=True)
 
 drug_db = {
-    "Phenytoin": {"Max": "1000 mg/day", "Range": [10, 20], "SE": "Gingival hyperplasia, Ataxia, Nystagmus.", "Note": "Non-linear Michaelis-Menten kinetics.", "Decision": "⚠️ Capacity-limited metabolism. Monitor levels closely and check albumin."},
-    "Valproic acid": {"Max": "60 mg/kg/day", "Range": [50, 100], "SE": "Hepatotoxicity, Hair loss, Tremors.", "Note": "Highly protein bound.", "Decision": "⚠️ High protein-binding. Monitor LFTs and platelet count."},
-    "Carbamazepine": {"Max": "1600 mg/day", "Range": [4, 12], "SE": "SIADH, Stevens-Johnson Syndrome.", "Note": "Potent auto-induction risk.", "Decision": "⚠️ Risk of Auto-induction (2-4 weeks). Monitor Na levels."},
-    "Levetiracetam": {"Max": "3000 mg/day", "Range": [12, 46], "SE": "Irritability, Behavioral changes.", "Note": "Primarily renally cleared.", "Decision": "✅ Low drug-drug interaction risk. Dose adjust for renal impairment."}
+    "Phenytoin": {"Max": "1000 mg/day", "Range": [10, 20], "SE": "Gingival hyperplasia, Ataxia, Nystagmus.", "Note": "Non-linear Michaelis-Menten kinetics.", "Decision": "⚠️ Capacity-limited metabolism. Monitor levels closely and check albumin status."},
+    "Valproic acid": {"Max": "60 mg/kg/day", "Range": [50, 100], "SE": "Hepatotoxicity, Hair loss, Tremors.", "Note": "Highly protein bound.", "Decision": "⚠️ Highly protein-bound. Monitor LFTs and platelet count frequently."},
+    "Carbamazepine": {"Max": "1600 mg/day", "Range": [4, 12], "SE": "SIADH, Stevens-Johnson Syndrome.", "Note": "Potent auto-induction risk.", "Decision": "⚠️ Risk of Auto-induction within 2-4 weeks. Monitor Na levels closely."},
+    "Levetiracetam": {"Max": "3000 mg/day", "Range": [12, 46], "SE": "Irritability, Behavioral changes.", "Note": "Primarily renally cleared.", "Decision": "✅ Low drug-drug interaction risk. Dose adjustment for renal impairment required."}
 }
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["🎯 Calculator", "📚 Drug Knowledge", "⚖️ Clinical Decision", "📋 Case Summary", "📝 SOAP Note"])
@@ -123,42 +124,46 @@ with tab1:
             target = st.slider("Target Css (mg/L)", 2, 120, 15 if selected_drug != "Valproic acid" else 75)
         interval = st.selectbox("Interval (hr)", [4, 6, 8, 12, 24], index=3)
 
-        # --- Logic: Body Metrics & Renal (Your New Code Integrated) ---
+        # --- CALCULATIONS (Hidden Logic) ---
         height_m = height / 100
         ht_in = height / 2.54
         bmi = weight / (height_m ** 2)
         
+        # IBW & AdjBW
         if gender == "Male":
             ibw = 50 + 2.3 * (ht_in - 60)
         else:
             ibw = 45.5 + 2.3 * (ht_in - 60)
-        ibw = max(ibw, 35) # Guard for short stature
-        
+        ibw = max(ibw, 35) 
         adjbw = ibw + 0.4 * (weight - ibw)
         
-        # Decide Renal Weight
+        # Renal Weight Selection Logic
         if bmi < 18.5:
-            renal_weight = weight # Better for underweight than IBW
+            renal_weight = weight
             weight_note = "⚠️ Underweight → Actual BW used"
         elif bmi >= 30:
             renal_weight = adjbw
             weight_note = "⚠️ Obese → Adjusted BW used"
         else:
-            renal_weight = ibw # Standard Cockcroft-Gault uses IBW for normal
+            renal_weight = ibw
             weight_note = "✅ Normal/Overweight → IBW used"
 
+        # Cockcroft-Gault
         crcl = ((140 - age) * renal_weight) / (72 * max(scr, 0.1))
         if gender == "Female": crcl *= 0.85
 
-        # BMI Status Logic
+        # BMI Category
         if bmi < 18.5: bmi_status = "Underweight"
         elif bmi < 25: bmi_status = "Normal"
         elif bmi < 30: bmi_status = "Overweight"
-        else: bmi_status = "Obesity"
+        elif bmi < 35: bmi_status = "Obesity Class I"
+        elif bmi < 40: bmi_status = "Obesity Class II"
+        else: bmi_status = "Obesity Class III"
 
-        # --- Pharmacokinetic Logic ---
+        # Drug PK Logic
         dosing_weight = adjbw if bmi >= 30 else weight
         s_factor, albumin, vmax, km = 0.92, 4.4, 7.0, 4.0
+        css_max, css_min = 0, 0 # placeholders
 
         if selected_drug == "Phenytoin":
             st.markdown("<h4 style='color:#1e3a8a;'>🧬 Phenytoin Parameters</h4>", unsafe_allow_html=True)
@@ -170,64 +175,65 @@ with tab1:
                 km = st.number_input("Km (mg/L)", 1.0, 10.0, 4.0)
                 salt = st.selectbox("Dosage Form (S)", ["Sodium (0.92)", "Acid (1.0)"])
             s_factor = 0.92 if "0.92" in salt else 1.0
-
             vd = 0.7 * dosing_weight; vmax_t = vmax * dosing_weight
             md = ((vmax_t * target) / (km + target)) / (24/interval)
             ld = target * vd
             k_el = (vmax_t / (km + target)) / vd; t_half = 0.693 / k_el
             css_max = (target / s_factor) + ((md * s_factor) / vd); css_min = css_max * math.exp(-k_el * interval)
-        
         elif selected_drug == "Valproic acid":
             vd, cl = 0.15 * weight, 0.008 * weight
-            k_val = cl/vd; ld, md = target*vd, target*cl*interval; t_half = 0.693/k_val; k_el = k_val
+            k_el = cl/vd; ld, md = target*vd, target*cl*interval; t_half = 0.693/k_el
         else:
             vd, cl = 0.6 * weight, (crcl * 0.6) / 1000 * 60
             k_el = cl/vd; ld, md = target*vd, target*cl*interval; t_half = 0.693/k_el
         
         if selected_drug != "Phenytoin" and crcl < 50: md *= (crcl/100)
-
+    
     with col_res:
-        st.markdown("<h2 style='color:#1e293b;'>📊 Assessment Results</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='color:#1e293b;'>📊 Analysis Panel</h2>", unsafe_allow_html=True)
+        calc_pressed = st.button("🚀 Calculate Regimen & Assessment")
         
-        # New Body & Renal Metrics
-        st.markdown("### 🧬 Patient Metrics")
-        rm1, rm2, rm3 = st.columns(3)
-        rm1.metric("BMI", f"{bmi:.1f}")
-        rm2.metric("IBW", f"{ibw:.1f}kg")
-        rm3.metric("CrCl", f"{crcl:.1f}")
-        
-        st.info(f"**Status:** {bmi_status} | {weight_note}")
-        
-        # Renal Range Guide
-        if crcl >= 90: st.success("🟢 Normal renal function")
-        elif crcl >= 60: st.info("🟡 Mild impairment")
-        elif crcl >= 15: st.warning("🟠 Moderate/Severe impairment")
-        else: st.error("🔴 Kidney failure")
+        if calc_pressed:
+            st.markdown("### 🧬 Patient Metrics")
+            rm1, rm2, rm3 = st.columns(3)
+            rm1.metric("BMI", f"{bmi:.1f}")
+            rm2.metric("IBW", f"{ibw:.1f}kg")
+            rm3.metric("CrCl", f"{crcl:.1f}")
+            
+            st.info(f"**BMI Status:** {bmi_status}")
+            st.info(weight_note)
+            
+            if crcl >= 90: st.success("🟢 Normal renal function")
+            elif crcl >= 60: st.info("🟡 Mild impairment")
+            elif crcl >= 30: st.warning("🟠 Moderate impairment")
+            elif crcl >= 15: st.warning("🔴 Severe impairment")
+            else: st.error("⚫ Kidney failure")
 
-        if st.button("🚀 Calculate Regimen"):
             st.divider()
-            col_metrics1, col_metrics2 = st.columns(2)
-            col_metrics1.metric("Vd (L)", f"{vd:.1f}")
-            col_metrics2.metric("t½ (h)", f"{t_half:.1f}")
+            st.markdown("### 💊 PK Results")
+            col_pk1, col_pk2 = st.columns(2)
+            col_pk1.metric("Vd (Volume)", f"{vd:.1f} L")
+            col_pk2.metric("t½ (Half-life)", f"{t_half:.1f} h")
             
-            st.success(f"**Final Plan:** LD {round(ld)}mg | MD {round(md)}mg q{interval}h")
+            st.success(f"**Plan:** LD {round(ld)}mg | MD {round(md)}mg q{interval}h")
             
-            # TDM Safety Check
-            st.markdown("### 💊 TDM Guard")
-            low, high = drug_db[selected_drug]["Range"]
-            if target > high:
-                st.error(f"⚠️ Target ({target}) is ABOVE therapeutic range ({low}-{high})")
-            elif target < low:
-                st.warning(f"⚠️ Target ({target}) is BELOW therapeutic range ({low}-{high})")
+            # TDM Guard
+            low_r, high_r = drug_db[selected_drug]["Range"]
+            if target > high_r:
+                st.error(f"⚠️ Warning: Target ({target}) is ABOVE therapeutic range ({low_r}-{high_r})")
+            elif target < low_r:
+                st.warning(f"⚠️ Caution: Target ({target}) is BELOW therapeutic range ({low_r}-{high_r})")
             else:
-                st.success(f"✅ Target is within Therapeutic Range ({low}-{high})")
+                st.success(f"✅ Target within Therapeutic Range ({low_r}-{high_r})")
+            
+            # PDF Download
+            soap_text = f"S: {age}Y patient. O: CrCl {crcl:.1f}mL/min, BMI {bmi:.1f}. A: PK optimized for {selected_drug}. P: LD {round(ld)}mg, MD {round(md)}mg q{interval}h."
+            pdf_bytes = create_pdf_report(age, weight, selected_drug, crcl, ld, md, interval, soap_text, (css_max if selected_drug=="Phenytoin" else None), (css_min if selected_drug=="Phenytoin" else None), vd, t_half)
+            st.download_button("📥 Download PK Report", pdf_bytes, f"Report_{selected_drug}.pdf")
+        else:
+            st.info("👈 Enter patient details and click Calculate to generate results.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        # PDF Prep
-        soap_content = f"S: {age}Y patient. O: BMI {bmi:.1f}, CrCl {crcl:.1f}mL/min. A: PK for {selected_drug}. P: LD {round(ld)}mg, MD {round(md)}mg q{interval}h."
-        pdf_data = create_pdf_report(age, weight, selected_drug, crcl, ld, md, interval, soap_content, (css_max if selected_drug=="Phenytoin" else None), (css_min if selected_drug=="Phenytoin" else None), vd, t_half)
-        st.download_button("📥 Download PDF Report", pdf_data, f"DoseWise_{selected_drug}.pdf")
-
-# Tabs 2, 3, 4, 5 utilize the same data dynamically
 with tab2:
     st.markdown('<div class="section">', unsafe_allow_html=True)
     db = drug_db[selected_drug]
@@ -235,37 +241,40 @@ with tab2:
     k1, k2 = st.columns(2)
     with k1: 
         st.write(f"**Target Range:** {db['Range'][0]} - {db['Range'][1]} mg/L")
-        st.write(f"**Max Dose:** {db['Max']}")
+        st.write(f"**Max Recommended:** {db['Max']}")
+        st.write(f"**Clinical Note:** {db['Note']}")
     with k2: st.error(f"**Major Side Effects:** {db['SE']}")
     st.markdown('</div>', unsafe_allow_html=True)
 
 with tab3:
     st.markdown('<div class="section">', unsafe_allow_html=True)
     st.subheader("⚖️ Clinical Decision Support")
-    st.info(f"**Expert Opinion:** {drug_db[selected_drug]['Decision']}")
-    if bmi >= 30: st.error(f"❗ **Obesity:** Adjusted BW ({adjbw:.1f}kg) used for calculations.")
-    if selected_drug == "Phenytoin" and albumin < 4.0:
+    st.info(f"**Expert Clinical Opinion:** {drug_db[selected_drug]['Decision']}")
+    if bmi >= 30: st.error(f"❗ **Obesity Alert:** Calculations adjusted for body mass index.")
+    if crcl < 50: st.warning(f"⚠️ **Renal Dose Adjustment:** Dose reduction applied due to CrCl < 50 mL/min.")
+    if selected_drug == "Phenytoin" and albumin < 4.4:
         adj_target = target / ((0.2 * albumin) + 0.1)
-        st.warning(f"💡 **Hypoalbuminemia:** Corrected Target is {adj_target:.1f} mg/L.")
+        st.warning(f"💡 **Albumin Correction:** Corrected Target Css is {adj_target:.1f} mg/L.")
     st.markdown('</div>', unsafe_allow_html=True)
 
 with tab4:
     st.markdown('<div class="section">', unsafe_allow_html=True)
-    st.markdown("### 📋 Case Summary")
+    st.markdown("<h2 style='text-align:center; color:#1e3a8a;'>📋 Case Summary</h2>", unsafe_allow_html=True)
     st.table({
-        "Parameter": ["Age", "BMI", "CrCl", "Vd", "t½", "Regimen"],
-        "Value": [f"{age} Y", f"{bmi:.1f} ({bmi_status})", f"{crcl:.1f} mL/min", f"{vd:.1f} L", f"{t_half:.1f} h", f"LD {round(ld)}mg / MD {round(md)}mg q{interval}h"]
+        "Clinical Parameter": ["Age", "BMI Category", "IBW", "Est. CrCl", "Vd", "t½ (Half-life)"], 
+        "Value": [f"{age} Y", f"{bmi_status}", f"{ibw:.1f} kg", f"{crcl:.1f} mL/min", f"{vd:.1f} L", f"{t_half:.1f} h"]
     })
     st.markdown('</div>', unsafe_allow_html=True)
 
 with tab5:
     st.markdown('<div class="section">', unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; color:#1e3a8a;'>📝 Professional SOAP Note</h2>", unsafe_allow_html=True)
     st.markdown(f'''
     <div style="background-color: #f0f4f8; padding: 25px; border-radius: 12px; border-left: 10px solid #1e3a8a;">
-        <p><b>Subjective:</b> Patient is a {age}-year-old {gender.lower()} referred for {selected_drug} dosing.</p>
-        <p><b>Objective:</b> Weight {weight}kg | BMI {bmi:.1f} | CrCl {crcl:.1f}mL/min | Albumin {albumin}g/dL.</p>
-        <p><b>Assessment:</b> Regimen calculated for target {target}mg/L. Clearance status: {bmi_status}.</p>
-        <p><b>Plan:</b> Start LD <b>{round(ld)}mg</b>, then <b>{round(md)}mg q{interval}h</b>. Follow-up level in 5 half-lives.</p>
+        <p><b>Subjective:</b> Patient is a {age}-year-old {gender.lower()} presenting for {selected_drug} titration.</p>
+        <p><b>Objective:</b> Weight {weight}kg | CrCl {crcl:.1f}mL/min | BMI {bmi:.1f} ({bmi_status}).</p>
+        <p><b>Assessment:</b> PK regimen designed for target of {target} mg/L considering current renal and metabolic status.</p>
+        <p><b>Plan:</b> Initiate LD <b>{round(ld)}mg</b>, followed by MD <b>{round(md)}mg q{interval}h</b>. Monitor for {db['SE']}.</p>
     </div>
     ''', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)

@@ -95,7 +95,7 @@ set_page_style('bg.jpg' if os.path.exists("bg.jpg") else "")
 st.markdown('<div class="hero">💊 DoseWise Platform</div>', unsafe_allow_html=True)
 
 drug_db = {
-    "Phenytoin": {"Max": "1000 mg/day", "Range": "10-20 mg/L", "SE": "Gingival hyperplasia, Ataxia, Nystagmus.", "Note": "Non-linear Michaelis-Menten kinetics.", "Decision": "⚠️ Capacity-limited metabolism detected. Monitor levels closely and check albumin status."},
+    "Phenytoin": {"Max": "1000 mg/day", "Range": "10-20 mg/L", "SE": "Gingival hyperplasia, Ataxia, Nystagmus.", "Note": "Non-linear Michaelis-Menten kinetics.", "Decision": "⚠️ Capacity-limited metabolism detected. Monitor levels closely."},
     "Valproic acid": {"Max": "60 mg/kg/day", "Range": "50-100 mg/L", "SE": "Hepatotoxicity, Hair loss, Tremors.", "Note": "Highly protein bound.", "Decision": "⚠️ Highly protein-bound drug. Monitor LFTs and platelet count frequently."},
     "Carbamazepine": {"Max": "1600 mg/day", "Range": "4-12 mg/L", "SE": "SIADH, Stevens-Johnson Syndrome.", "Note": "Potent auto-induction risk.", "Decision": "⚠️ Risk of Auto-induction within 2-4 weeks. Monitor Na levels closely."},
     "Levetiracetam": {"Max": "3000 mg/day", "Range": "12-46 mg/L", "SE": "Irritability, Behavioral changes.", "Note": "Primarily renally cleared.", "Decision": "✅ Low drug-drug interaction risk. Mandatory dose adjustment for renal impairment."}
@@ -120,7 +120,7 @@ with tab1:
             target = st.slider("Target Css (mg/L)", 5, 100, 15 if selected_drug != "Valproic acid" else 75)
         interval = st.selectbox("Interval (hr)", [4, 6, 8, 12, 24], index=3)
 
-        # Body Metrics
+        # المعادلات الأساسية
         height_m = height / 100
         ht_in = height / 2.54
         bmi = weight / (height_m ** 2)
@@ -142,37 +142,41 @@ with tab1:
             st.markdown("### 🧪 Free Phenytoin Assessment (Inputs)")
             total_phenytoin = st.number_input("Total Phenytoin Level", value=7.50)
             valproic_level = st.number_input("Valproic Acid Level", value=100.00)
+            albumin_case2 = st.number_input("Albumin (g/dL)", value=4.2)
             st.markdown("---")
             st.subheader("🧬 Phenytoin Advanced Parameters")
             cp1, cp2 = st.columns(2)
             with cp1:
                 vmax = st.number_input("Vmax (mg/kg/day)", 1.0, 15.0, 7.0)
-                km = st.number_input("Km (mg/L)", 1.0, 10.0, 4.0)
+                albumin_calc = st.number_input("Serum Albumin (g/dL)", 0.5, 6.0, 4.4, key="alb_m")
             with cp2:
-                albumin_val = st.number_input("Serum Albumin (g/dL)", 0.5, 6.0, 4.4)
+                km = st.number_input("Km (mg/L)", 1.0, 10.0, 4.0)
                 salt = st.selectbox("Dosage Form (S)", ["Sodium (0.92)", "Acid (1.0)"])
             s_factor = 0.92 if "Sodium" in salt else 1.0
 
-        # Calculation Logic
+        # --- الحسابات الدقيقة والمميزة لكل دواء ---
         if selected_drug == "Phenytoin":
             vd = 0.7 * dosing_weight
             vmax_t = vmax * dosing_weight
-            md = ((vmax_t * target) / (km + target)) / (24/interval)
-            ld = target * vd
+            md = ((vmax_t * target) / (km + target)) / (24/interval); ld = target * vd
             t_half = (0.693 * vd * (km + target)) / vmax_t
             k_el = 0.693 / t_half
-            css_max = (target / s_factor) + ((md * s_factor) / vd)
-            css_min = css_max * math.exp(-k_el * interval)
         elif selected_drug == "Valproic acid":
-            vd, cl = 0.15 * weight, 0.008 * weight
-            ld, md = target*vd, target*cl*interval
-            k_el = cl/vd; t_half = 0.693/k_el
-        else: # Carbamazepine & Levetiracetam
-            vd, cl = 0.6 * weight, (crcl * 0.6) / 1000 * 60
-            ld, md = target*vd, target*cl*interval
-            k_el = cl/vd; t_half = 0.693/k_el
-
-        if selected_drug != "Phenytoin" and crcl < 50: md *= (crcl/100)
+            vd = 0.15 * weight
+            cl = 0.008 * weight # Typical Cl for VPA
+            ld, md = target * vd, target * cl * interval
+            k_el = cl / vd; t_half = 0.693 / k_el
+        elif selected_drug == "Carbamazepine":
+            vd = 1.4 * weight # Highly Lipophilic
+            cl = 0.064 * weight # Typical Cl after induction
+            ld, md = target * vd, target * cl * interval
+            k_el = cl / vd; t_half = 0.693 / k_el
+        elif selected_drug == "Levetiracetam":
+            vd = 0.6 * weight
+            cl = (crcl * 0.6) / 1000 * 60 # Directly Renal Dependent
+            ld, md = target * vd, target * cl * interval
+            k_el = cl / vd; t_half = 0.693 / k_el
+            if crcl < 50: md *= (crcl/100) # Mandatory Renal Adjustment
 
         calculate_btn = st.button("🚀 Calculate Clinical Plan")
 
@@ -181,62 +185,56 @@ with tab1:
             st.markdown("<h2 style='color:#1e293b;'>📊 Analysis Results</h2>", unsafe_allow_html=True)
             if selected_drug == "Phenytoin":
                 st.markdown("### 🧪 Free Concentration Assessment")
-                f_frac = 0.1 + (0.001 * valproic_level)
-                e_free = total_phenytoin * f_frac
-                st.metric("Estimated Free Phenytoin", f"{e_free:.2f} mcg/mL")
-                if 1 <= e_free <= 2: 
-                    st.success("✅ Free level therapeutic. No dose adjustment required.")
-                elif e_free < 1: st.warning("⚠️ Subtherapeutic level.")
-                else: st.error("🚨 Toxicity risk detected.")
+                f_f = 0.1 + (0.001 * valproic_level); e_f = total_phenytoin * f_f
+                st.metric("Estimated Free Phenytoin", f"{e_f:.2f} mcg/mL")
+                if 1 <= e_f <= 2: st.success("✅ Therapeutic range. No dose adjustment required.")
+                elif e_f < 1: st.warning("⚠️ Subtherapeutic.")
+                else: st.error("🚨 Elevated - Toxicity monitoring.")
                 st.divider()
 
             st.markdown("### 📊 Body & Renal Assessment")
-            r1, r2, r3 = st.columns(3)
-            r1.metric("BMI", f"{bmi:.1f}"); r2.metric("IBW", f"{ibw:.1f} kg"); r3.metric("CrCl", f"{crcl:.1f}")
+            m1, m2, m3 = st.columns(3)
+            m1.metric("BMI", f"{bmi:.1f}"); m2.metric("IBW", f"{ibw:.1f} kg"); m3.metric("CrCl", f"{crcl:.1f}")
             st.info(f"**Status:** {bmi_status} | {weight_note}")
             st.divider()
             st.success(f"**Final Regimen:** LD {round(ld)}mg | MD {round(md)}mg q{interval}h")
-            pk_1, pk_2 = st.columns(2)
-            pk_1.metric("Vd (L)", f"{vd:.1f}"); pk_2.metric("t½ (h)", f"{t_half:.1f}")
+            pk1, pk2 = st.columns(2)
+            pk1.metric("Vd (L)", f"{vd:.1f}"); pk2.metric("t½ (h)", f"{t_half:.1f}")
 
-            full_soap = f"Subjective: Patient is a {age}Y {gender.lower()} for {selected_drug} management.\nObjective: Wt {weight}kg | BMI {bmi:.1f} | CrCl {crcl:.1f}mL/min.\nAssessment: Optimized for {selected_drug} kinetics.\nPlan: LD {round(ld)}mg, MD {round(md)}mg q{interval}h."
-            pdf_raw = create_pdf_report(age, weight, selected_drug, crcl, ld, md, interval, full_soap, None, None, vd, t_half)
-            st.download_button("📥 Download Report", pdf_raw, f"DoseWise_{selected_drug}.pdf")
+            full_soap = f"Subjective: Patient {age}Y on {selected_drug}.\nObjective: Wt {weight}kg, BMI {bmi:.1f}, CrCl {crcl:.1f}.\nAssessment: {selected_drug} PK optimized.\nPlan: LD {round(ld)}mg, MD {round(md)}mg q{interval}h."
+            pdf_data = create_pdf_report(age, weight, selected_drug, crcl, ld, md, interval, full_soap, None, None, vd, t_half)
+            st.download_button("📥 Download Report", pdf_data, f"DoseWise_{selected_drug}.pdf")
         else:
             st.info("👈 Fill data and click Calculate.")
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Tabs
 with tab2:
     if calculate_btn:
-        st.subheader(f"📚 {selected_drug} Knowledge")
-        st.write(f"**Target:** {drug_db[selected_drug]['Range']}")
-        st.error(f"**Side Effects:** {drug_db[selected_drug]['SE']}")
+        st.subheader("📚 Monograph")
+        st.write(f"**Range:** {drug_db[selected_drug]['Range']}")
+        st.error(f"**SE:** {drug_db[selected_drug]['SE']}")
     else: st.warning("Calculate first.")
 
 with tab3:
     if calculate_btn:
-        st.info(f"**Decision Support:** {drug_db[selected_drug]['Decision']}")
+        st.info(f"**Decision:** {drug_db[selected_drug]['Decision']}")
         if selected_drug == "Phenytoin" and 1 <= (total_phenytoin * (0.1 + (0.001 * valproic_level))) <= 2:
-            st.success("✅ **Clinical Decision:** No dose adjustment required.")
+            st.success("✅ **PK Decision:** No dose adjustment required.")
     else: st.warning("Calculate first.")
 
 with tab4:
     if calculate_btn:
-        st.table({"Clinical Parameter": ["Age", "BMI Status", "IBW", "AdjBW", "CrCl", "Vd", "t½"], 
-                  "Value": [f"{age}", bmi_status, f"{ibw:.1f} kg", f"{adjbw:.1f} kg", f"{crcl:.1f}", f"{vd:.1f} L", f"{t_half:.1f} h"]})
+        st.table({"Clinical Parameter": ["Age", "BMI", "IBW", "AdjBW", "CrCl", "Vd", "t½"], 
+                  "Value": [f"{age}", f"{bmi:.1f}", f"{ibw:.1f} kg", f"{adjbw:.1f} kg", f"{crcl:.1f}", f"{vd:.1f} L", f"{t_half:.1f} h"]})
     else: st.warning("Calculate first.")
 
 with tab5:
     if calculate_btn:
-        st.markdown(f'''
-        <div style="background-color: #f0f4f8; padding: 25px; border-radius: 12px; border-left: 10px solid #1e3a8a;">
-            <p><b>Subjective:</b> Patient is a {age}-year-old {gender.lower()} presenting for {selected_drug} management.</p>
-            <p><b>Objective:</b> Weight {weight}kg | BMI {bmi:.1f} | CrCl {crcl:.1f}mL/min | Vd {vd:.1f}L | t½ {t_half:.1f}h.</p>
-            <p><b>Assessment:</b> PK regimen optimized for {selected_drug} considering weight and renal status.</p>
-            <p><b>Plan:</b> Administer LD <b>{round(ld)}mg</b> then MD <b>{round(md)}mg q{interval}h</b>. Monitor for {drug_db[selected_drug]['SE']}.</p>
-        </div>
-        ''', unsafe_allow_html=True)
+        st.markdown(f'''<div style="background:#f0f4f8; padding:25px; border-radius:12px; border-left:10px solid #1e3a8a;">
+            <b>Subjective:</b> Patient {age}Y for {selected_drug} management.<br>
+            <b>Objective:</b> Weight {weight}kg | BMI {bmi:.1f} | CrCl {crcl:.1f}mL/min | Vd {vd:.1f}L.<br>
+            <b>Assessment:</b> Regimen optimized for {selected_drug} kinetics.<br>
+            <b>Plan:</b> LD <b>{round(ld)}mg</b> then MD <b>{round(md)}mg q{interval}h</b>. Monitor for {drug_db[selected_drug]['SE']}.</div>''', unsafe_allow_html=True)
     else: st.warning("Calculate first.")
 
 st.markdown("<br><center>💙 **DoseWise** | MNU Faculty of Pharmacy | Team 2</center>", unsafe_allow_html=True)
